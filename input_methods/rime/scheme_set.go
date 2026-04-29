@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync/atomic"
 )
 
 const (
@@ -15,6 +16,20 @@ const (
 
 type schemeSetConfig struct {
 	Current string `json:"current"`
+}
+
+var schemeSetVersion atomic.Uint64
+
+func currentSchemeSetVersion() uint64 {
+	return schemeSetVersion.Load()
+}
+
+func bumpSchemeSetVersion() uint64 {
+	return schemeSetVersion.Add(1)
+}
+
+func resetSchemeSetVersionForTest() {
+	schemeSetVersion.Store(0)
 }
 
 func moqiAppDataDir() string {

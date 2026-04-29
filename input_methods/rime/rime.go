@@ -208,12 +208,14 @@ type IME struct {
 	asyncResponseSender          func(*imecore.Response)
 	aiRequestSeq                 uint64
 	appearanceVersion            uint64
+	schemeSetVersion             uint64
 	autoPairRulesVersion         uint64
 	inputStateShared             bool
 	sharedOptions                map[string]bool
 	sharedInputStateNeedsApply   bool
 	syncedOptions                map[string]bool
 	syncedSchemaID               string
+	syncedSchemaBySchemeSet      map[string]string
 	syncedSettingsNeedsApply     bool
 	autoPairQuotes               bool
 	semicolonSelectSecond        bool
@@ -277,6 +279,7 @@ func New(client *imecore.Client) imecore.TextService {
 		aiActions:         actions,
 		aiReviewGenerator: generator,
 		aiResultCh:        make(chan aiAsyncResult, 4),
+		schemeSetVersion:  currentSchemeSetVersion(),
 	}
 	ime.loadAppearancePrefs()
 	return ime
@@ -309,6 +312,7 @@ func (ime *IME) HandleRequest(req *imecore.Request) *imecore.Response {
 	defer ime.mu.Unlock()
 
 	resp := imecore.NewResponse(req.SeqNum, true)
+	ime.syncSchemeSetVersion(resp)
 	if ime.syncAppearancePrefs() {
 		ime.sharedInputStateNeedsApply = ime.inputStateShared
 		ime.syncedSettingsNeedsApply = true
@@ -1759,6 +1763,20 @@ func (ime *IME) rememberAICommit(commit string) {
 	ime.aiPreviousCommit = commit
 }
 
+func (ime *IME) syncSchemeSetVersion(resp *imecore.Response) {
+	version := currentSchemeSetVersion()
+	if ime.schemeSetVersion == version {
+		return
+	}
+	debugLogf("方案集版本变化，销毁旧 RIME session old=%d new=%d", ime.schemeSetVersion, version)
+	ime.schemeSetVersion = version
+	ime.syncedSettingsNeedsApply = true
+	if ime.inputStateShared {
+		ime.sharedInputStateNeedsApply = true
+	}
+	ime.destroySession(resp)
+}
+
 func (ime *IME) createSession(resp *imecore.Response) {
 	if ime.backend == nil || !ime.backendReady() {
 		return
@@ -2243,6 +2261,7 @@ func (ime *IME) handleSchemeSetCommand(commandID int, req *imecore.Request, resp
 	}
 	resp.TrayNotification = schemeSetTrayNotification("方案集切换中...", imecore.TrayNotificationIconInfo)
 	if ime.redeploy(req, resp) {
+		ime.schemeSetVersion = bumpSchemeSetVersion()
 		if _, ok := ime.backend.(*nativeBackend); ok {
 			ime.sendSchemeSetCompletionNotificationAsync(ime.backend)
 			return true
@@ -2307,6 +2326,7 @@ func (ime *IME) handleSchemaCommand(commandID int) bool {
 		return false
 	}
 	ime.syncedSchemaID = schemaID
+	ime.setSyncedSchemaIDForCurrentSchemeSet(schemaID)
 	ime.saveAppearancePrefsWithReason("handleSchemaCommand")
 	if ime.inputStateShared {
 		ime.applySharedInputStateToBackend()
@@ -2476,9 +2496,35 @@ func (ime *IME) applySyncedSettingsToBackend() {
 	if ime.backend == nil {
 		return
 	}
-	schemaID := strings.TrimSpace(ime.syncedSchemaID)
-	if schemaID != "" && ime.backend.CurrentSchemaID() != schemaID {
-		_ = ime.backend.SelectSchema(schemaID)
+	schemaID := ime.syncedSchemaIDForCurrentSchemeSet()
+	schemas := ime.backend.SchemaList()
+	currentSchemaID := strings.TrimSpace(ime.backend.CurrentSchemaID())
+	currentSchemaExists := schemaIDExists(currentSchemaID, schemas)
+	if schemaID != "" {
+		if schemaIDExists(schemaID, schemas) {
+			if currentSchemaID != schemaID && ime.backend.SelectSchema(schemaID) {
+				currentSchemaID = schemaID
+				currentSchemaExists = true
+			}
+		} else {
+			fallbackSchemaID := currentSchemaID
+			if !currentSchemaExists {
+				fallbackSchemaID = firstSchemaID(schemas)
+				if fallbackSchemaID != "" && fallbackSchemaID != currentSchemaID && ime.backend.SelectSchema(fallbackSchemaID) {
+					currentSchemaID = fallbackSchemaID
+					currentSchemaExists = true
+				}
+			}
+			if currentSchemaExists && currentSchemaID != "" && currentSchemaID != schemaID {
+				ime.syncedSchemaID = currentSchemaID
+				ime.setSyncedSchemaIDForCurrentSchemeSet(currentSchemaID)
+				ime.saveAppearancePrefsWithReason("applySyncedSettingsToBackend:invalid_schema")
+			}
+		}
+	} else if !currentSchemaExists {
+		if fallbackSchemaID := firstSchemaID(schemas); fallbackSchemaID != "" && fallbackSchemaID != currentSchemaID {
+			_ = ime.backend.SelectSchema(fallbackSchemaID)
+		}
 	}
 	for name, value := range ime.syncedOptions {
 		name = strings.TrimSpace(name)
@@ -2487,6 +2533,50 @@ func (ime *IME) applySyncedSettingsToBackend() {
 		}
 		ime.backend.SetOption(name, value)
 	}
+}
+
+func (ime *IME) syncedSchemaIDForCurrentSchemeSet() string {
+	schemeSet := currentSchemeSetName()
+	if len(ime.syncedSchemaBySchemeSet) > 0 {
+		if schemaID := strings.TrimSpace(ime.syncedSchemaBySchemeSet[schemeSet]); schemaID != "" {
+			return schemaID
+		}
+		return ""
+	}
+	return strings.TrimSpace(ime.syncedSchemaID)
+}
+
+func (ime *IME) setSyncedSchemaIDForCurrentSchemeSet(schemaID string) {
+	schemaID = strings.TrimSpace(schemaID)
+	if schemaID == "" {
+		return
+	}
+	if ime.syncedSchemaBySchemeSet == nil {
+		ime.syncedSchemaBySchemeSet = make(map[string]string)
+	}
+	ime.syncedSchemaBySchemeSet[currentSchemeSetName()] = schemaID
+}
+
+func schemaIDExists(schemaID string, schemas []RimeSchema) bool {
+	schemaID = strings.TrimSpace(schemaID)
+	if schemaID == "" {
+		return false
+	}
+	for _, schema := range schemas {
+		if strings.TrimSpace(schema.ID) == schemaID {
+			return true
+		}
+	}
+	return false
+}
+
+func firstSchemaID(schemas []RimeSchema) string {
+	for _, schema := range schemas {
+		if schemaID := strings.TrimSpace(schema.ID); schemaID != "" {
+			return schemaID
+		}
+	}
+	return ""
 }
 
 func (ime *IME) toggleInputStateShared() {

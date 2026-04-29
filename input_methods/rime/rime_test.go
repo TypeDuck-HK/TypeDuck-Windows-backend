@@ -83,6 +83,7 @@ type testDictEntry struct {
 
 type testBackend struct {
 	session              bool
+	destroySessionCalls  int
 	composition          string
 	rawInput             string
 	pageNo               int
@@ -181,6 +182,7 @@ func (b *testBackend) EnsureSession() bool {
 }
 
 func (b *testBackend) DestroySession() {
+	b.destroySessionCalls++
 	b.session = false
 	b.ClearComposition()
 }
@@ -488,15 +490,17 @@ func trimLastRuneForTest(s string) string {
 
 func newTestIME() *IME {
 	return &IME{
-		TextServiceBase: imecore.NewTextServiceBase(&imecore.Client{ID: "test-client"}),
-		style:           defaultStyle(),
-		backend:         newTestBackend(),
+		TextServiceBase:  imecore.NewTextServiceBase(&imecore.Client{ID: "test-client"}),
+		style:            defaultStyle(),
+		backend:          newTestBackend(),
+		schemeSetVersion: currentSchemeSetVersion(),
 	}
 }
 
 func newIsolatedTestIME(t *testing.T) *IME {
 	t.Helper()
 	resetSharedAppearanceConfigForTest()
+	resetSchemeSetVersionForTest()
 	return newTestIME()
 }
 
@@ -1786,6 +1790,63 @@ func TestOnCommandSwitchesSchemeSetAndRedeploysWithSelectedUserDir(t *testing.T)
 	}
 	if resp.TrayNotification == nil || resp.TrayNotification.Message != "方案集切换成功" {
 		t.Fatalf("unexpected tray notification: %#v", resp.TrayNotification)
+	}
+}
+
+func TestHandleRequestRecreatesSessionAfterSchemeSetSwitchAcrossInstances(t *testing.T) {
+	appData := t.TempDir()
+	t.Setenv("APPDATA", appData)
+	resetSharedAppearanceConfigForTest()
+	resetSchemeSetVersionForTest()
+	t.Cleanup(resetSchemeSetVersionForTest)
+	if err := os.MkdirAll(filepath.Join(appData, APP, defaultSchemeSetName), 0o755); err != nil {
+		t.Fatalf("create default scheme set: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(appData, APP, "Work"), 0o755); err != nil {
+		t.Fatalf("create Work scheme set: %v", err)
+	}
+
+	first := newTestIME()
+	second := newTestIME()
+	secondResp := second.HandleRequest(&imecore.Request{
+		SeqNum: 200,
+		Method: "onActivate",
+	})
+	if secondResp.ReturnValue != 1 {
+		t.Fatalf("expected second instance activation handled, got %d", secondResp.ReturnValue)
+	}
+	secondBackend := second.backend.(*testBackend)
+	if !secondBackend.session {
+		t.Fatal("expected second instance to have an active session before scheme set switch")
+	}
+
+	switchResp := first.onCommand(&imecore.Request{
+		SeqNum: 201,
+		ID:     imecore.FlexibleID{Int: schemeSetCommandID(1), IsInt: true},
+	}, imecore.NewResponse(201, true))
+	if switchResp.ReturnValue != 1 {
+		t.Fatalf("expected scheme set command handled, got %d", switchResp.ReturnValue)
+	}
+	if currentSchemeSetVersion() == second.schemeSetVersion {
+		t.Fatal("expected global scheme set version to advance after switch")
+	}
+
+	menuResp := second.HandleRequest(&imecore.Request{
+		SeqNum: 202,
+		Method: "onMenu",
+		ID:     imecore.FlexibleID{String: "settings"},
+	})
+	if menuResp.ReturnValue != 1 {
+		t.Fatalf("expected second instance menu handled, got %d", menuResp.ReturnValue)
+	}
+	if secondBackend.destroySessionCalls != 1 {
+		t.Fatalf("expected second instance to destroy stale session once, got %d", secondBackend.destroySessionCalls)
+	}
+	if !secondBackend.session {
+		t.Fatal("expected second instance to recreate session after scheme set switch")
+	}
+	if second.schemeSetVersion != currentSchemeSetVersion() {
+		t.Fatalf("expected second instance scheme set version synced to %d, got %d", currentSchemeSetVersion(), second.schemeSetVersion)
 	}
 }
 
@@ -3515,6 +3576,77 @@ func TestHandleRequestSyncsSelectedSchemaAcrossInstances(t *testing.T) {
 	secondBackend := second.backend.(*testBackend)
 	if secondBackend.currentSchemaID != "rime_frost_double_pinyin" {
 		t.Fatalf("expected schema synced to double pinyin, got %q", secondBackend.currentSchemaID)
+	}
+}
+
+func TestHandleRequestIgnoresSyncedSchemaMissingFromCurrentSchemeSet(t *testing.T) {
+	t.Setenv("APPDATA", t.TempDir())
+	resetSharedAppearanceConfigForTest()
+
+	ime := newTestIME()
+	backend := ime.backend.(*testBackend)
+	backend.currentSchemaID = "missing_schema"
+	ime.syncedSchemaID = "old_scheme_schema"
+
+	resp := ime.HandleRequest(&imecore.Request{
+		SeqNum: 174,
+		Method: "onActivate",
+	})
+	if resp.ReturnValue != 1 {
+		t.Fatalf("expected activation handled, got %d", resp.ReturnValue)
+	}
+	if backend.currentSchemaID != "rime_frost" {
+		t.Fatalf("expected fallback to first available schema, got %q", backend.currentSchemaID)
+	}
+	if ime.syncedSchemaID != "rime_frost" {
+		t.Fatalf("expected synced schema updated to fallback, got %q", ime.syncedSchemaID)
+	}
+	for _, schemaID := range backend.selectSchemaCalls {
+		if schemaID == "old_scheme_schema" {
+			t.Fatalf("should not select schema missing from current scheme set, calls=%#v", backend.selectSchemaCalls)
+		}
+	}
+}
+
+func TestHandleRequestUsesSchemaRecordedForCurrentSchemeSet(t *testing.T) {
+	appData := t.TempDir()
+	t.Setenv("APPDATA", appData)
+	resetSharedAppearanceConfigForTest()
+	if err := os.MkdirAll(filepath.Join(appData, APP, defaultSchemeSetName), 0o755); err != nil {
+		t.Fatalf("create default scheme set: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(appData, APP, "Work"), 0o755); err != nil {
+		t.Fatalf("create Work scheme set: %v", err)
+	}
+	if !saveCurrentSchemeSetName("Work") {
+		t.Fatal("save current scheme set")
+	}
+
+	ime := newTestIME()
+	backend := ime.backend.(*testBackend)
+	backend.schemas = []RimeSchema{
+		{ID: "work_default", Name: "Work Default"},
+		{ID: "work_double", Name: "Work Double"},
+	}
+	backend.currentSchemaID = "work_default"
+	ime.syncedSchemaID = "rime_frost_double_pinyin"
+	ime.syncedSchemaBySchemeSet = map[string]string{
+		defaultSchemeSetName: "rime_frost_double_pinyin",
+		"Work":               "work_double",
+	}
+
+	resp := ime.HandleRequest(&imecore.Request{
+		SeqNum: 175,
+		Method: "onActivate",
+	})
+	if resp.ReturnValue != 1 {
+		t.Fatalf("expected activation handled, got %d", resp.ReturnValue)
+	}
+	if backend.currentSchemaID != "work_double" {
+		t.Fatalf("expected Work scheme set schema selected, got %q", backend.currentSchemaID)
+	}
+	if len(backend.selectSchemaCalls) != 1 || backend.selectSchemaCalls[0] != "work_double" {
+		t.Fatalf("unexpected select schema calls: %#v", backend.selectSchemaCalls)
 	}
 }
 

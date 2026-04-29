@@ -13,30 +13,31 @@ const appearanceConfigFileName = "appearance_config.json"
 const rimeDefaultCustomConfigFileName = "default.custom.yaml"
 
 type appearanceConfig struct {
-	CandidateTheme                 *string         `json:"candidate_theme,omitempty"`
-	FontFace                       *string         `json:"font_face,omitempty"`
-	FontPoint                      *int            `json:"font_point,omitempty"`
-	CandidateCommentFontFace       *string         `json:"candidate_comment_font_face,omitempty"`
-	CandidateCommentFontPoint      *int            `json:"candidate_comment_font_point,omitempty"`
-	InlinePreedit                  *bool           `json:"inline_preedit,omitempty"`
-	CandidatePerRow                *int            `json:"candidate_per_row,omitempty"`
-	CandidateCount                 *int            `json:"candidate_count,omitempty"`
-	CandidateSpacing               *int            `json:"candidate_spacing,omitempty"`
-	CandidateBackgroundColor       *string         `json:"candidate_background_color,omitempty"`
-	CandidateHighlightColor        *string         `json:"candidate_highlight_color,omitempty"`
-	CandidateTextColor             *string         `json:"candidate_text_color,omitempty"`
-	CandidateHighlightTextColor    *string         `json:"candidate_highlight_text_color,omitempty"`
-	CandidateCommentColor          *string         `json:"candidate_comment_color,omitempty"`
-	CandidateCommentHighlightColor *string         `json:"candidate_comment_highlight_color,omitempty"`
-	InputStateShared               *bool           `json:"input_state_shared,omitempty"`
-	SharedOptions                  map[string]bool `json:"shared_options,omitempty"`
-	SyncedOptions                  map[string]bool `json:"synced_options,omitempty"`
-	CurrentSchemaID                *string         `json:"current_schema_id,omitempty"`
-	SharedAsciiMode                *bool           `json:"shared_ascii_mode,omitempty"`
-	SharedFullShape                *bool           `json:"shared_full_shape,omitempty"`
-	SharedTraditionalization       *bool           `json:"shared_traditionalization,omitempty"`
-	AutoPairQuotes                 *bool           `json:"auto_pair_quotes,omitempty"`
-	SemicolonSelectSecond          *bool           `json:"semicolon_select_second,omitempty"`
+	CandidateTheme                 *string           `json:"candidate_theme,omitempty"`
+	FontFace                       *string           `json:"font_face,omitempty"`
+	FontPoint                      *int              `json:"font_point,omitempty"`
+	CandidateCommentFontFace       *string           `json:"candidate_comment_font_face,omitempty"`
+	CandidateCommentFontPoint      *int              `json:"candidate_comment_font_point,omitempty"`
+	InlinePreedit                  *bool             `json:"inline_preedit,omitempty"`
+	CandidatePerRow                *int              `json:"candidate_per_row,omitempty"`
+	CandidateCount                 *int              `json:"candidate_count,omitempty"`
+	CandidateSpacing               *int              `json:"candidate_spacing,omitempty"`
+	CandidateBackgroundColor       *string           `json:"candidate_background_color,omitempty"`
+	CandidateHighlightColor        *string           `json:"candidate_highlight_color,omitempty"`
+	CandidateTextColor             *string           `json:"candidate_text_color,omitempty"`
+	CandidateHighlightTextColor    *string           `json:"candidate_highlight_text_color,omitempty"`
+	CandidateCommentColor          *string           `json:"candidate_comment_color,omitempty"`
+	CandidateCommentHighlightColor *string           `json:"candidate_comment_highlight_color,omitempty"`
+	InputStateShared               *bool             `json:"input_state_shared,omitempty"`
+	SharedOptions                  map[string]bool   `json:"shared_options,omitempty"`
+	SyncedOptions                  map[string]bool   `json:"synced_options,omitempty"`
+	CurrentSchemaID                *string           `json:"current_schema_id,omitempty"`
+	CurrentSchemaBySchemeSet       map[string]string `json:"current_schema_by_scheme_set,omitempty"`
+	SharedAsciiMode                *bool             `json:"shared_ascii_mode,omitempty"`
+	SharedFullShape                *bool             `json:"shared_full_shape,omitempty"`
+	SharedTraditionalization       *bool             `json:"shared_traditionalization,omitempty"`
+	AutoPairQuotes                 *bool             `json:"auto_pair_quotes,omitempty"`
+	SemicolonSelectSecond          *bool             `json:"semicolon_select_second,omitempty"`
 }
 
 var appearanceState struct {
@@ -91,6 +92,7 @@ func cloneAppearanceConfig(cfg appearanceConfig) appearanceConfig {
 		SharedOptions:                  cloneBoolMap(cfg.SharedOptions),
 		SyncedOptions:                  cloneBoolMap(cfg.SyncedOptions),
 		CurrentSchemaID:                cloneStringPtr(cfg.CurrentSchemaID),
+		CurrentSchemaBySchemeSet:       cloneStringMap(cfg.CurrentSchemaBySchemeSet),
 		SharedAsciiMode:                cloneBoolPtr(cfg.SharedAsciiMode),
 		SharedFullShape:                cloneBoolPtr(cfg.SharedFullShape),
 		SharedTraditionalization:       cloneBoolPtr(cfg.SharedTraditionalization),
@@ -373,6 +375,13 @@ func (ime *IME) applyAppearanceConfig(cfg appearanceConfig) {
 	}
 	if cfg.CurrentSchemaID != nil {
 		ime.syncedSchemaID = strings.TrimSpace(*cfg.CurrentSchemaID)
+		ime.setSyncedSchemaIDForCurrentSchemeSet(ime.syncedSchemaID)
+	}
+	if len(cfg.CurrentSchemaBySchemeSet) > 0 {
+		ime.syncedSchemaBySchemeSet = cloneStringMap(cfg.CurrentSchemaBySchemeSet)
+		if schemaID := strings.TrimSpace(ime.syncedSchemaBySchemeSet[currentSchemeSetName()]); schemaID != "" {
+			ime.syncedSchemaID = schemaID
+		}
 	}
 	if ime.sharedOptions == nil {
 		ime.sharedOptions = make(map[string]bool)
@@ -498,9 +507,12 @@ func (ime *IME) saveAppearancePrefsWithReason(reason string) {
 	if len(ime.syncedOptions) > 0 {
 		cfg.SyncedOptions = cloneBoolMap(ime.syncedOptions)
 	}
-	if strings.TrimSpace(ime.syncedSchemaID) != "" {
-		currentSchemaID := strings.TrimSpace(ime.syncedSchemaID)
+	if strings.TrimSpace(ime.syncedSchemaIDForCurrentSchemeSet()) != "" {
+		currentSchemaID := strings.TrimSpace(ime.syncedSchemaIDForCurrentSchemeSet())
 		cfg.CurrentSchemaID = &currentSchemaID
+	}
+	if len(ime.syncedSchemaBySchemeSet) > 0 {
+		cfg.CurrentSchemaBySchemeSet = cloneStringMap(ime.syncedSchemaBySchemeSet)
 	}
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
