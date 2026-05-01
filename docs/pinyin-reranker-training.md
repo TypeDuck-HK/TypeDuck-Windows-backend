@@ -740,3 +740,297 @@ pick_best_accuracy: 66.34%
 3. 对真实 Top3/Top10 评估 `model_score + rank_bias`，寻找能转正的融合参数。
 4. 端侧部署前再做 ONNX / INT8 延迟评估。
 
+## 当前实验路径清单
+
+本节记录当前实验实际使用过的脚本、语料、模型和产物路径，便于复现。
+
+### 仓库路径
+
+```text
+主输入法仓库:
+d:\vscode\moqi-input-method-projs\moqi-ime
+
+评测/训练脚本仓库:
+d:\vscode\rime_projs\rime-schema-compare
+
+Rime Frost 方案目录:
+d:\vscode\rime_projs\rime-schema-compare\vendor\rime-frost
+```
+
+### Rime 配置和 DLL
+
+必须显式使用下面 DLL，否则候选召回结果可能不同：
+
+```text
+d:\vscode\rime_projs\rime-schema-compare\lib\rime-24986039806.dll
+```
+
+当前使用的 Frost 自定义配置：
+
+```text
+d:\vscode\rime_projs\rime-schema-compare\vendor\rime-frost\rime_frost.custom.yaml
+```
+
+当前内容：
+
+```yaml
+patch:
+  translator/enable_user_dict: false
+  translator/max_sentences: 10
+  translator/max_homophones: 10
+```
+
+### 原始语料
+
+原始知乎语料：
+
+```text
+d:\vscode\rime-frost\cn_dicts_dazhu\zhihu_deal0.txt
+```
+
+清洗后纯汉字分句语料：
+
+```text
+d:\vscode\rime-frost\cn_dicts_dazhu\zhihu_deal0.split_hanzi.txt
+```
+
+用于 held-out 评估的切片语料：
+
+```text
+E:\训练bert\data\corpus\zhihu_deal0.split_hanzi.holdout_50001_70000.txt
+E:\训练bert\data\corpus\zhihu_deal0.split_hanzi.holdout_250001_270000.txt
+```
+
+小规模固定评测语料：
+
+```text
+d:\vscode\rime_projs\rime-schema-compare\data\corpus\news.txt
+d:\vscode\rime_projs\rime-schema-compare\data\corpus\novel.txt
+d:\vscode\rime_projs\rime-schema-compare\data\corpus\prose.txt
+d:\vscode\rime_projs\rime-schema-compare\data\corpus\tech.txt
+d:\vscode\rime_projs\rime-schema-compare\data\corpus\test.txt
+```
+
+### 训练数据目录
+
+统一训练数据目录：
+
+```text
+E:\训练bert\data
+```
+
+当前回归质量分数据：
+
+```text
+E:\训练bert\data\quality_rime_frost_top10_50k_var2_5.train.jsonl
+E:\训练bert\data\quality_rime_frost_top10_50k_var2_5.valid.jsonl
+E:\训练bert\data\quality_rime_frost_top10_50k_var2_5.test.jsonl
+E:\训练bert\data\quality_rime_frost_top10_50k_var2_5.all.jsonl
+E:\训练bert\data\quality_rime_frost_top10_50k_var2_5.summary.json
+```
+
+生成参数：
+
+```text
+source: d:\vscode\rime-frost\cn_dicts_dazhu\zhihu_deal0.split_hanzi.txt
+skip: 70000
+limit: 50000
+top_n: 10
+candidate_count: 每条随机 2/3/4/5 个候选
+quality: 1 - edit_distance(candidate, gold) / max(len(candidate), len(gold))
+```
+
+### 底座模型
+
+Hugging Face 模型名：
+
+```text
+uer/chinese_roberta_L-2_H-128
+```
+
+本地缓存路径：
+
+```text
+d:\vscode\moqi-input-method-projs\moqi-im-windows\.tools\hf_models\uer_chinese_roberta_L-2_H-128
+```
+
+### 已训练模型目录
+
+统一模型目录：
+
+```text
+E:\训练bert\models
+```
+
+当前回归质量分模型：
+
+```text
+E:\训练bert\models\quality_regression_l2_1epoch
+E:\训练bert\models\quality_regression_l2_1epoch\best_encoder
+E:\训练bert\models\quality_regression_l2_1epoch\best_scorer.pt
+E:\训练bert\models\quality_regression_l2_1epoch\metrics.json
+```
+
+历史强监督模型：
+
+```text
+E:\训练bert\models\strong_top20_append_gold_randompos_l2_5epoch
+E:\训练bert\models\strong_top1_vs_gold_randompos_l2_5epoch
+E:\训练bert\models\strong_top20_append_gold_l2_5epoch
+E:\训练bert\models\strong_top1_vs_gold_l2_5epoch
+```
+
+历史 listwise / hard negative 模型：
+
+```text
+E:\训练bert\models\listwise_rank_syllable_l2_top1w2_10epoch
+E:\训练bert\models\listwise_rank_syllable_l2_top1w2_hardneg_10epoch
+E:\训练bert\models\listwise_rank_syllable_l2_top20_50k_3epoch
+```
+
+### 评估结果目录
+
+统一评估目录：
+
+```text
+E:\训练bert\eval
+```
+
+原始 Top3 + 强监督模型评估结果：
+
+```text
+E:\训练bert\eval\original_top3_strong\small_corpus_top3_rime249.json
+E:\训练bert\eval\original_top3_strong\small_corpus_top3_rime249.csv
+E:\训练bert\eval\original_top3_strong\holdout_50001_70000_top3_rime249.json
+E:\训练bert\eval\original_top3_strong\holdout_50001_70000_top3_rime249.csv
+E:\训练bert\eval\original_top3_strong\holdout_250001_270000_top3_rime249.json
+E:\训练bert\eval\original_top3_strong\holdout_250001_270000_top3_rime249.csv
+```
+
+人工插入 gold / 召回增强实验结果：
+
+```text
+E:\训练bert\eval\top3_injection
+E:\训练bert\eval\recall_injection
+E:\训练bert\eval\oracle
+```
+
+TopN 召回诊断结果：
+
+```text
+E:\训练bert\eval\topn_recall
+```
+
+### 核心脚本
+
+清洗和拼音工具：
+
+```text
+d:\vscode\rime_projs\rime-schema-compare\src\rime_schema_compare\text_pipeline.py
+```
+
+Rime 解码封装：
+
+```text
+d:\vscode\rime_projs\rime-schema-compare\src\rime_schema_compare\rime_runner.py
+d:\vscode\rime_projs\rime-schema-compare\src\rime_schema_compare\call_librime.py
+```
+
+通用 benchmark：
+
+```text
+d:\vscode\rime_projs\rime-schema-compare\scripts\benchmark_sentences.py
+d:\vscode\rime_projs\rime-schema-compare\scripts\run_test_top3.ps1
+```
+
+回归质量分数据生成：
+
+```text
+d:\vscode\rime_projs\rime-schema-compare\scripts\generate_quality_regression_dataset.py
+```
+
+回归质量分训练：
+
+```text
+d:\vscode\rime_projs\rime-schema-compare\scripts\train_quality_regression_reranker.py
+```
+
+TopN 真实候选评估：
+
+```text
+d:\vscode\rime_projs\rime-schema-compare\scripts\evaluate_reranker_topn.py
+```
+
+JSONL listwise/回归候选评估：
+
+```text
+d:\vscode\rime_projs\rime-schema-compare\scripts\evaluate_listwise_reranker_jsonl.py
+```
+
+rank bias 扫描：
+
+```text
+d:\vscode\rime_projs\rime-schema-compare\scripts\sweep_rank_bias.py
+```
+
+实验辅助脚本：
+
+```text
+d:\vscode\rime_projs\rime-schema-compare\scripts\diagnose_rime_topn_recall.py
+d:\vscode\rime_projs\rime-schema-compare\scripts\build_strong_supervised_listwise.py
+d:\vscode\rime_projs\rime-schema-compare\scripts\build_oracle_listwise_from_recall.py
+d:\vscode\rime_projs\rime-schema-compare\scripts\build_recall_injection_listwise.py
+d:\vscode\rime_projs\rime-schema-compare\scripts\build_top3_rank2_injection_listwise.py
+d:\vscode\rime_projs\rime-schema-compare\scripts\extract_hard_negative_listwise.py
+d:\vscode\rime_projs\rime-schema-compare\scripts\split_listwise_dataset.py
+```
+
+### 常用命令模板
+
+生成回归质量分数据：
+
+```powershell
+python scripts/generate_quality_regression_dataset.py `
+  --source "d:\vscode\rime-frost\cn_dicts_dazhu\zhihu_deal0.split_hanzi.txt" `
+  --out-dir "E:\训练bert\data" `
+  --name quality_rime_frost_top10_50k_var2_5 `
+  --vendor rime_frost `
+  --rime-dll "lib\rime-24986039806.dll" `
+  --skip 70000 `
+  --limit 50000 `
+  --top-n 10 `
+  --progress-every 5000
+```
+
+训练 1 epoch 回归模型：
+
+```powershell
+python scripts/train_quality_regression_reranker.py `
+  --model "d:/vscode/moqi-input-method-projs/moqi-im-windows/.tools/hf_models/uer_chinese_roberta_L-2_H-128" `
+  --train "E:\训练bert\data\quality_rime_frost_top10_50k_var2_5.train.jsonl" `
+  --valid "E:\训练bert\data\quality_rime_frost_top10_50k_var2_5.valid.jsonl" `
+  --test "E:\训练bert\data\quality_rime_frost_top10_50k_var2_5.test.jsonl" `
+  --out "E:\训练bert\models\quality_regression_l2_1epoch" `
+  --epochs 1 `
+  --batch-size 64 `
+  --max-length 128
+```
+
+评估原始 Rime Top3 + 模型：
+
+```powershell
+python scripts/evaluate_reranker_topn.py `
+  --vendor rime_frost `
+  --rime-dll "lib\rime-24986039806.dll" `
+  --corpus "E:\训练bert\data\corpus\zhihu_deal0.split_hanzi.holdout_50001_70000.txt" `
+  --top-n 3 `
+  --encoder "E:\训练bert\models\quality_regression_l2_1epoch\best_encoder" `
+  --scorer "E:\训练bert\models\quality_regression_l2_1epoch\best_scorer.pt" `
+  --out-csv "E:\训练bert\eval\quality_regression_l2_1epoch\holdout_50001_70000_top3.csv" `
+  --out-json "E:\训练bert\eval\quality_regression_l2_1epoch\holdout_50001_70000_top3.json" `
+  --batch-size 256 `
+  --max-length 128 `
+  --min-rerank-candidates 2 `
+  --rank-input
+```
+
