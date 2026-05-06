@@ -44,11 +44,19 @@ const (
 	ID_APPEARANCE_FONT_18                      = 112
 	ID_APPEARANCE_FONT_20                      = 113
 	ID_APPEARANCE_FONT_22                      = 114
+	ID_APPEARANCE_FONT_24                      = 202
+	ID_APPEARANCE_FONT_26                      = 203
+	ID_APPEARANCE_FONT_28                      = 204
+	ID_APPEARANCE_FONT_30                      = 205
 	ID_APPEARANCE_COMMENT_FONT_14              = 115
 	ID_APPEARANCE_COMMENT_FONT_16              = 116
 	ID_APPEARANCE_COMMENT_FONT_18              = 117
 	ID_APPEARANCE_COMMENT_FONT_20              = 118
 	ID_APPEARANCE_COMMENT_FONT_22              = 119
+	ID_APPEARANCE_COMMENT_FONT_24              = 206
+	ID_APPEARANCE_COMMENT_FONT_26              = 207
+	ID_APPEARANCE_COMMENT_FONT_28              = 208
+	ID_APPEARANCE_COMMENT_FONT_30              = 209
 	ID_APPEARANCE_BG_WHITE                     = 120
 	ID_APPEARANCE_BG_WARM                      = 121
 	ID_APPEARANCE_BG_BLUE                      = 122
@@ -2796,6 +2804,10 @@ func (ime *IME) buildMenu() []map[string]interface{} {
 				{"id": ID_APPEARANCE_FONT_18, "text": "18", "checked": ime.style.FontPoint == 18},
 				{"id": ID_APPEARANCE_FONT_20, "text": "20", "checked": ime.style.FontPoint == 20},
 				{"id": ID_APPEARANCE_FONT_22, "text": "22", "checked": ime.style.FontPoint == 22},
+				{"id": ID_APPEARANCE_FONT_24, "text": "24", "checked": ime.style.FontPoint == 24},
+				{"id": ID_APPEARANCE_FONT_26, "text": "26", "checked": ime.style.FontPoint == 26},
+				{"id": ID_APPEARANCE_FONT_28, "text": "28", "checked": ime.style.FontPoint == 28},
+				{"id": ID_APPEARANCE_FONT_30, "text": "30", "checked": ime.style.FontPoint == 30},
 			}},
 			{"text": "候选文字字体", "submenu": []map[string]interface{}{
 				{"id": ID_APPEARANCE_FONT_FAMILY_SEGOE_UI, "text": "Segoe UI", "checked": strings.EqualFold(ime.style.FontFace, "Segoe UI")},
@@ -2809,6 +2821,10 @@ func (ime *IME) buildMenu() []map[string]interface{} {
 				{"id": ID_APPEARANCE_COMMENT_FONT_18, "text": "18", "checked": ime.style.CandidateCommentFontPoint == 18},
 				{"id": ID_APPEARANCE_COMMENT_FONT_20, "text": "20", "checked": ime.style.CandidateCommentFontPoint == 20},
 				{"id": ID_APPEARANCE_COMMENT_FONT_22, "text": "22", "checked": ime.style.CandidateCommentFontPoint == 22},
+				{"id": ID_APPEARANCE_COMMENT_FONT_24, "text": "24", "checked": ime.style.CandidateCommentFontPoint == 24},
+				{"id": ID_APPEARANCE_COMMENT_FONT_26, "text": "26", "checked": ime.style.CandidateCommentFontPoint == 26},
+				{"id": ID_APPEARANCE_COMMENT_FONT_28, "text": "28", "checked": ime.style.CandidateCommentFontPoint == 28},
+				{"id": ID_APPEARANCE_COMMENT_FONT_30, "text": "30", "checked": ime.style.CandidateCommentFontPoint == 30},
 			}},
 			{"text": "注释文字字体", "submenu": []map[string]interface{}{
 				{"id": ID_APPEARANCE_COMMENT_FONT_FAMILY_CONSOLAS, "text": "Consolas", "checked": strings.EqualFold(ime.style.CandidateCommentFontFace, "Consolas")},

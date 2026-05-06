@@ -3835,10 +3835,10 @@ func TestAppearanceSettingsPersistToDisk(t *testing.T) {
 	if !ime.applyAppearanceCommand(ID_APPEARANCE_COMMENT_FONT_FAMILY_DENGXIAN) {
 		t.Fatal("expected comment font family command handled")
 	}
-	if !ime.applyAppearanceCommand(ID_APPEARANCE_FONT_22) {
+	if !ime.applyAppearanceCommand(ID_APPEARANCE_FONT_30) {
 		t.Fatal("expected font size command handled")
 	}
-	if !ime.applyAppearanceCommand(ID_APPEARANCE_COMMENT_FONT_18) {
+	if !ime.applyAppearanceCommand(ID_APPEARANCE_COMMENT_FONT_28) {
 		t.Fatal("expected comment font size command handled")
 	}
 	if !ime.applyAppearanceCommand(ID_APPEARANCE_LAYOUT_HORIZONTAL) {
@@ -3879,8 +3879,8 @@ func TestAppearanceSettingsPersistToDisk(t *testing.T) {
 	if err := json.Unmarshal(data, &persisted); err != nil {
 		t.Fatalf("expected valid appearance config json: %v", err)
 	}
-	if got := persisted["font_point"]; got != float64(22) {
-		t.Fatalf("expected persisted font_point 22, got %#v", got)
+	if got := persisted["font_point"]; got != float64(30) {
+		t.Fatalf("expected persisted font_point 30, got %#v", got)
 	}
 	if got := persisted["font_face"]; got != "Microsoft YaHei UI" {
 		t.Fatalf("expected persisted font_face Microsoft YaHei UI, got %#v", got)
@@ -3888,8 +3888,8 @@ func TestAppearanceSettingsPersistToDisk(t *testing.T) {
 	if got := persisted["candidate_comment_font_face"]; got != "DengXian" {
 		t.Fatalf("expected persisted candidate_comment_font_face DengXian, got %#v", got)
 	}
-	if got := persisted["candidate_comment_font_point"]; got != float64(18) {
-		t.Fatalf("expected persisted candidate_comment_font_point 18, got %#v", got)
+	if got := persisted["candidate_comment_font_point"]; got != float64(28) {
+		t.Fatalf("expected persisted candidate_comment_font_point 28, got %#v", got)
 	}
 	if got := persisted["candidate_per_row"]; got != float64(7) {
 		t.Fatalf("expected persisted candidate_per_row 7, got %#v", got)
@@ -3929,14 +3929,14 @@ func TestAppearanceSettingsPersistToDisk(t *testing.T) {
 	reloaded := newTestIME()
 	reloaded.loadAppearancePrefs()
 
-	if reloaded.style.FontPoint != 22 {
-		t.Fatalf("expected reloaded font size 22, got %d", reloaded.style.FontPoint)
+	if reloaded.style.FontPoint != 30 {
+		t.Fatalf("expected reloaded font size 30, got %d", reloaded.style.FontPoint)
 	}
 	if reloaded.style.FontFace != "Microsoft YaHei UI" {
 		t.Fatalf("expected reloaded font face Microsoft YaHei UI, got %q", reloaded.style.FontFace)
 	}
-	if reloaded.style.CandidateCommentFontPoint != 18 {
-		t.Fatalf("expected reloaded comment font size 18, got %d", reloaded.style.CandidateCommentFontPoint)
+	if reloaded.style.CandidateCommentFontPoint != 28 {
+		t.Fatalf("expected reloaded comment font size 28, got %d", reloaded.style.CandidateCommentFontPoint)
 	}
 	if reloaded.style.CandidateCommentFontFace != "DengXian" {
 		t.Fatalf("expected reloaded comment font face DengXian, got %q", reloaded.style.CandidateCommentFontFace)

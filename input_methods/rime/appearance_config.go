@@ -691,6 +691,14 @@ func (ime *IME) applyAppearanceCommand(commandID int) bool {
 		ime.style.FontPoint = 20
 	case ID_APPEARANCE_FONT_22:
 		ime.style.FontPoint = 22
+	case ID_APPEARANCE_FONT_24:
+		ime.style.FontPoint = 24
+	case ID_APPEARANCE_FONT_26:
+		ime.style.FontPoint = 26
+	case ID_APPEARANCE_FONT_28:
+		ime.style.FontPoint = 28
+	case ID_APPEARANCE_FONT_30:
+		ime.style.FontPoint = 30
 	case ID_APPEARANCE_FONT_FAMILY_SEGOE_UI:
 		ime.style.FontFace = "Segoe UI"
 	case ID_APPEARANCE_FONT_FAMILY_YAHEI_UI:
@@ -709,6 +717,14 @@ func (ime *IME) applyAppearanceCommand(commandID int) bool {
 		ime.style.CandidateCommentFontPoint = 20
 	case ID_APPEARANCE_COMMENT_FONT_22:
 		ime.style.CandidateCommentFontPoint = 22
+	case ID_APPEARANCE_COMMENT_FONT_24:
+		ime.style.CandidateCommentFontPoint = 24
+	case ID_APPEARANCE_COMMENT_FONT_26:
+		ime.style.CandidateCommentFontPoint = 26
+	case ID_APPEARANCE_COMMENT_FONT_28:
+		ime.style.CandidateCommentFontPoint = 28
+	case ID_APPEARANCE_COMMENT_FONT_30:
+		ime.style.CandidateCommentFontPoint = 30
 	case ID_APPEARANCE_COMMENT_FONT_FAMILY_CONSOLAS:
 		ime.style.CandidateCommentFontFace = "Consolas"
 	case ID_APPEARANCE_COMMENT_FONT_FAMILY_YAHEI_UI:
