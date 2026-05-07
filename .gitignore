@@ -6,6 +6,9 @@
 *.exe~
 input_methods/fcitx5/*.dll
 *.so
+!input_methods/rime/android/
+!input_methods/rime/android/**/
+!input_methods/rime/android/**/*.so
 *.dylib
 
 # Test binary, built with `go test -c`

@@ -69,6 +69,8 @@ func (ime *IME) HandleRequest(req *imecore.Request) *imecore.Response {
 
 	case "onCommand":
 		return ime.onCommand(req, resp)
+	case "selectCandidate":
+		return ime.selectCandidate(req, resp)
 	}
 
 	return resp
@@ -195,6 +197,21 @@ func (ime *IME) onCommand(req *imecore.Request, resp *imecore.Response) *imecore
 	default:
 		resp.ReturnValue = 0
 	}
+	return resp
+}
+
+func (ime *IME) selectCandidate(req *imecore.Request, resp *imecore.Response) *imecore.Response {
+	if !req.HasCandidateIndex || req.CandidateIndex < 0 || req.CandidateIndex >= len(ime.candidates) {
+		resp.ReturnValue = 0
+		return resp
+	}
+
+	resp.CommitString = ime.candidates[req.CandidateIndex]
+	ime.pinyin = ""
+	ime.candidates = nil
+	resp.CompositionString = ""
+	resp.ShowCandidates = false
+	resp.ReturnValue = 1
 	return resp
 }
 
