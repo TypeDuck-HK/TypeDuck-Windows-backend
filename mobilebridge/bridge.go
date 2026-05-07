@@ -2,8 +2,10 @@ package mobilebridge
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gaboolic/moqi-ime/imecore"
 	"github.com/gaboolic/moqi-ime/input_methods/fcitx5"
@@ -15,6 +17,8 @@ const (
 	GUIDMoqi   = "{5C8E1D74-2F9A-4B63-91DE-7A45C8F2B306}"
 	GUIDRime   = "{3F6B5A12-8D44-4E71-9A2E-6B4F9C1D2A30}"
 	GUIDFcitx5 = "{D2E4A8B1-6C35-4F90-AB7D-18E2635C9F41}"
+
+	mobileSlowLogThreshold = 30 * time.Millisecond
 )
 
 type StringList struct {
@@ -49,6 +53,7 @@ type MobileResponse struct {
 	CompositionString  string
 	CommitString       string
 	CandidateList      *StringList
+	CandidateEntries   *StringList
 	ShowCandidates     bool
 	CursorPos          int
 	CompositionCursor  int
@@ -116,13 +121,20 @@ func (s *Session) Deactivate() *MobileResponse {
 }
 
 func (s *Session) KeyDown(keyCode int, charCode int) *MobileResponse {
+	totalStart := time.Now()
+	filterStart := time.Now()
 	resp := s.handle("filterKeyDown", keyCode, charCode, -1, false, 0)
+	filterElapsed := time.Since(filterStart)
 	if resp != nil && resp.ReturnValue != 0 {
+		onStart := time.Now()
 		onResp := s.handle("onKeyDown", keyCode, charCode, -1, false, 0)
+		onElapsed := time.Since(onStart)
+		logMobileSlow("KeyDown", totalStart, "key=%d char=%d filter=%s on=%s ret=%d", keyCode, charCode, filterElapsed, onElapsed, onRespReturnValue(onResp))
 		if responseHasPayload(onResp) || onResp.ReturnValue != 0 {
 			return onResp
 		}
 	}
+	logMobileSlow("KeyDown", totalStart, "key=%d char=%d filter=%s ret=%d", keyCode, charCode, filterElapsed, onRespReturnValue(resp))
 	return resp
 }
 
@@ -147,6 +159,71 @@ func (s *Session) ChangePage(backward bool) *MobileResponse {
 
 func (s *Session) Command(commandID int) *MobileResponse {
 	return s.handle("onCommand", 0, 0, -1, false, commandID)
+}
+
+func (s *Session) SchemeSets() *StringList {
+	return newStringList(rime.AvailableSchemeSetNames())
+}
+
+func (s *Session) CurrentSchemeSet() string {
+	return rime.CurrentSchemeSetName()
+}
+
+func (s *Session) SelectSchemeSet(name string) *MobileResponse {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.seqNum++
+	if s.service == nil || s.closed {
+		return errorResponse(s.seqNum, fmt.Errorf("session is not initialized"))
+	}
+	if ime, ok := s.service.(*rime.IME); ok {
+		return s.applyResponse(ime.MobileSelectSchemeSet(name, s.seqNum))
+	}
+	if !rime.SelectSchemeSetName(name) {
+		return errorResponse(s.seqNum, fmt.Errorf("failed to select scheme set: %s", name))
+	}
+	return &MobileResponse{Success: true, ReturnValue: 1, CandidateList: newStringList(nil)}
+}
+
+func (s *Session) SchemaEntries() *StringList {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if ime, ok := s.service.(*rime.IME); ok {
+		return newStringList(ime.MobileSchemaEntries())
+	}
+	return newStringList(nil)
+}
+
+func (s *Session) MenuEntries() *StringList {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if ime, ok := s.service.(*rime.IME); ok {
+		return newStringList(ime.MobileMenuEntries())
+	}
+	return newStringList(nil)
+}
+
+func (s *Session) CurrentSchemaID() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if ime, ok := s.service.(*rime.IME); ok {
+		return ime.MobileCurrentSchemaID()
+	}
+	return ""
+}
+
+func (s *Session) SelectSchema(schemaID string) *MobileResponse {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.seqNum++
+	if s.service == nil || s.closed {
+		return errorResponse(s.seqNum, fmt.Errorf("session is not initialized"))
+	}
+	if ime, ok := s.service.(*rime.IME); ok && ime.MobileSelectSchema(schemaID) {
+		return s.applyResponse(imecore.NewResponse(s.seqNum, true))
+	}
+	return errorResponse(s.seqNum, fmt.Errorf("failed to select schema: %s", schemaID))
 }
 
 func (s *Session) Close() {
@@ -186,8 +263,16 @@ func (s *Session) handle(method string, keyCode int, charCode int, candidateInde
 		}
 	}
 
+	start := time.Now()
 	resp := s.service.HandleRequest(req)
-	return s.applyResponse(resp)
+	handleElapsed := time.Since(start)
+	applyStart := time.Now()
+	mobileResp := s.applyResponse(resp)
+	applyElapsed := time.Since(applyStart)
+	if elapsed := time.Since(start); elapsed >= mobileSlowLogThreshold {
+		log.Printf("mobilebridge slow handle method=%s key=%d char=%d total=%s handle=%s apply=%s ret=%d candidates=%d", method, keyCode, charCode, elapsed, handleElapsed, applyElapsed, mobileResp.ReturnValue, mobileResp.CandidateList.Len())
+	}
+	return mobileResp
 }
 
 func (s *Session) baseRequest(method string) *imecore.Request {
@@ -199,7 +284,9 @@ func (s *Session) baseRequest(method string) *imecore.Request {
 		CandidateList:     append([]string{}, s.candidates...),
 		ShowCandidates:    s.show,
 		CursorPos:         s.cursorPos,
-		Data:              map[string]interface{}{},
+		Data: map[string]interface{}{
+			"source": "android",
+		},
 	}
 }
 
@@ -229,6 +316,7 @@ func (s *Session) applyResponse(resp *imecore.Response) *MobileResponse {
 		CompositionString:  resp.CompositionString,
 		CommitString:       resp.CommitString,
 		CandidateList:      newStringList(resp.CandidateList),
+		CandidateEntries:   newStringList(mobileCandidateEntries(resp)),
 		ShowCandidates:     resp.ShowCandidates,
 		CursorPos:          resp.CursorPos,
 		CompositionCursor:  resp.CompositionCursor,
@@ -238,6 +326,24 @@ func (s *Session) applyResponse(resp *imecore.Response) *MobileResponse {
 		Message:            resp.Message,
 		Error:              resp.Error,
 	}
+}
+
+func mobileCandidateEntries(resp *imecore.Response) []string {
+	if resp == nil || len(resp.CandidateEntries) == 0 {
+		return nil
+	}
+	entries := make([]string, 0, len(resp.CandidateEntries))
+	for _, candidate := range resp.CandidateEntries {
+		entries = append(entries, sanitizeMobileCandidateField(candidate.Text)+"\t"+sanitizeMobileCandidateField(candidate.Comment))
+	}
+	return entries
+}
+
+func sanitizeMobileCandidateField(value string) string {
+	value = strings.ReplaceAll(value, "\t", " ")
+	value = strings.ReplaceAll(value, "\r", " ")
+	value = strings.ReplaceAll(value, "\n", " ")
+	return strings.TrimSpace(value)
 }
 
 func newService(client *imecore.Client, guid string) (imecore.TextService, error) {
@@ -276,4 +382,19 @@ func responseHasPayload(resp *MobileResponse) bool {
 		resp.CandidateList.Len() > 0 ||
 		resp.Error != "" ||
 		resp.Message != ""
+}
+
+func onRespReturnValue(resp *MobileResponse) int {
+	if resp == nil {
+		return 0
+	}
+	return resp.ReturnValue
+}
+
+func logMobileSlow(operation string, start time.Time, format string, args ...interface{}) {
+	elapsed := time.Since(start)
+	if elapsed < mobileSlowLogThreshold {
+		return
+	}
+	log.Printf("mobilebridge slow %s total=%s %s", operation, elapsed, fmt.Sprintf(format, args...))
 }
