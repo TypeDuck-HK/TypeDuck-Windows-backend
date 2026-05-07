@@ -140,14 +140,14 @@ func translateKeyCode(req *imecore.Request) int {
 		}
 	}
 
-	if keyCode >= vkF1 && keyCode <= vkF12 {
-		return rimeF1 + keyCode - vkF1
-	}
 	if mapped, ok := vkMaps[keyCode]; ok {
 		return mapped
 	}
 	if isPrintableChar(req) {
 		return req.CharCode
+	}
+	if keyCode >= vkF1 && keyCode <= vkF12 {
+		return rimeF1 + keyCode - vkF1
 	}
 	return voidSymbol
 }
