@@ -120,6 +120,8 @@ const (
 	aiHotkeyKeyCode   = 0x47 // G
 	aiCandidateLimit  = 3
 	secondSelectChar  = ';'
+
+	rimeSlowLogThreshold = 30 * time.Millisecond
 )
 
 type Style struct {
@@ -261,9 +263,9 @@ func defaultStyle() Style {
 		CandidateCommentHighlightColor: "#000000",
 		CandidateSpacing:               20,
 		FontFace:                       "Segoe UI",
-		FontPoint:                      20,
+		FontPoint:                      16,
 		CandidateCommentFontFace:       "Consolas",
-		CandidateCommentFontPoint:      18,
+		CandidateCommentFontPoint:      14,
 		InlinePreedit:                  "composition",
 		SoftCursor:                     false,
 	}
@@ -319,6 +321,11 @@ func (ime *IME) ensureAIResultCh() chan aiAsyncResult {
 func (ime *IME) HandleRequest(req *imecore.Request) *imecore.Response {
 	ime.mu.Lock()
 	defer ime.mu.Unlock()
+
+	requestStart := time.Now()
+	defer func() {
+		logRimeSlow("HandleRequest", requestStart, "method=%s key=%d char=%d", req.Method, req.KeyCode, req.CharCode)
+	}()
 
 	resp := imecore.NewResponse(req.SeqNum, true)
 	ime.syncSchemeSetVersion(resp)
@@ -395,7 +402,7 @@ func (ime *IME) filterKeyDown(req *imecore.Request, resp *imecore.Response) *ime
 	if ime.handleSecondSelectionKeyDownFilter(req, resp) {
 		return resp
 	}
-	if ime.lastKeyDownCode == req.KeyCode {
+	if !isAndroidSoftKeyboardRequest(req) && ime.lastKeyDownCode == req.KeyCode {
 		ime.lastKeySkip++
 		if ime.lastKeySkip >= 2 {
 			ime.lastKeyDownCode = 0
@@ -405,7 +412,9 @@ func (ime *IME) filterKeyDown(req *imecore.Request, resp *imecore.Response) *ime
 		ime.lastKeyDownCode = req.KeyCode
 		ime.lastKeySkip = 0
 		beforeASCII, beforeFullShape, hasInputState := ime.currentInputModeState()
+		start := time.Now()
 		ime.lastKeyDownRet = ime.processKey(req, false)
+		logRimeSlow("filterKeyDown.processKey", start, "key=%d char=%d ret=%v", req.KeyCode, req.CharCode, ime.lastKeyDownRet)
 		ime.updateLangStatusIfInputStateChanged(req, resp, beforeASCII, beforeFullShape, hasInputState)
 	}
 	ime.lastKeyUpCode = 0
@@ -431,13 +440,23 @@ func (ime *IME) filterKeyUp(req *imecore.Request, resp *imecore.Response) *imeco
 	} else {
 		ime.lastKeyUpCode = req.KeyCode
 		beforeASCII, beforeFullShape, hasInputState := ime.currentInputModeState()
+		start := time.Now()
 		ime.lastKeyUpRet = ime.processKey(req, true)
+		logRimeSlow("filterKeyUp.processKey", start, "key=%d char=%d ret=%v", req.KeyCode, req.CharCode, ime.lastKeyUpRet)
 		ime.updateLangStatusIfInputStateChanged(req, resp, beforeASCII, beforeFullShape, hasInputState)
 	}
 	ime.lastKeyDownCode = 0
 	ime.lastKeySkip = 0
 	resp.ReturnValue = boolToInt(ime.lastKeyUpRet)
 	return resp
+}
+
+func isAndroidSoftKeyboardRequest(req *imecore.Request) bool {
+	if req == nil || req.Data == nil {
+		return false
+	}
+	source, _ := req.Data["source"].(string)
+	return strings.EqualFold(strings.TrimSpace(source), "android")
 }
 
 func (ime *IME) currentInputModeState() (asciiMode bool, fullShape bool, ok bool) {
@@ -1014,6 +1033,12 @@ func (ime *IME) BackendAvailable() bool {
 }
 
 func (ime *IME) processKey(req *imecore.Request, isUp bool) bool {
+	start := time.Now()
+	defer func() {
+		if req != nil {
+			logRimeSlow("processKey", start, "key=%d char=%d isUp=%v", req.KeyCode, req.CharCode, isUp)
+		}
+	}()
 	ime.createSession(nil)
 	if ime.backend == nil {
 		ime.logShortcutTrace(req, isUp, 0, 0, false, false)
@@ -1030,7 +1055,9 @@ func (ime *IME) processKey(req *imecore.Request, isUp bool) bool {
 	}
 	translatedKeyCode := translateKeyCode(req)
 	modifiers := translateModifiers(req, isUp)
+	backendStart := time.Now()
 	backendRet := ime.backend.ProcessKey(req, translatedKeyCode, modifiers)
+	logRimeSlow("backend.ProcessKey", backendStart, "key=%d translated=%d modifiers=%d ret=%v", req.KeyCode, translatedKeyCode, modifiers, backendRet)
 	if shouldFallbackArrowNavigation && modifiers == 0 &&
 		ime.applyArrowNavigationFallback(req.KeyCode, beforeState) {
 		backendRet = true
@@ -1424,7 +1451,9 @@ func (ime *IME) currentVisibleBackendState() (rimeState, bool) {
 	if ime.backend == nil || !ime.backendReady() {
 		return rimeState{}, false
 	}
+	stateStart := time.Now()
 	state := ime.backend.State()
+	logRimeSlow("backend.State", stateStart, "composition=%d candidates=%d commit=%d", len(state.Composition), len(state.Candidates), len(state.CommitString))
 	visibleCandidateCount := ime.candidateCount()
 	if visibleCandidateCount > 0 && len(state.Candidates) > visibleCandidateCount {
 		state.Candidates = append([]candidateItem(nil), state.Candidates[:visibleCandidateCount]...)
@@ -2002,6 +2031,16 @@ func (ime *IME) clearResponse(resp *imecore.Response) {
 }
 
 func (ime *IME) fillResponseFromBackendState(resp *imecore.Response, allowCommit bool) bool {
+	start := time.Now()
+	defer func() {
+		candidates, commitLen, compositionLen := 0, 0, 0
+		if resp != nil {
+			candidates = len(resp.CandidateList)
+			commitLen = len(resp.CommitString)
+			compositionLen = len(resp.CompositionString)
+		}
+		logRimeSlow("fillResponseFromBackendState", start, "allowCommit=%v candidates=%d commit=%d composition=%d", allowCommit, candidates, commitLen, compositionLen)
+	}()
 	if resp == nil {
 		return true
 	}
@@ -2326,6 +2365,81 @@ func (ime *IME) schemaMenuItems() []map[string]interface{} {
 	return items
 }
 
+func (ime *IME) MobileSchemaEntries() []string {
+	ime.mu.Lock()
+	defer ime.mu.Unlock()
+	ime.createSession(nil)
+	if ime.backend == nil {
+		return nil
+	}
+	schemas := ime.backend.SchemaList()
+	currentSchemaID := strings.TrimSpace(ime.backend.CurrentSchemaID())
+	entries := make([]string, 0, len(schemas))
+	for _, schema := range schemas {
+		schemaID := strings.TrimSpace(schema.ID)
+		if schemaID == "" {
+			continue
+		}
+		name := strings.TrimSpace(schema.Name)
+		if name == "" {
+			name = schemaID
+		}
+		selected := "0"
+		if schemaID == currentSchemaID {
+			selected = "1"
+		}
+		entries = append(entries, schemaID+"\t"+name+"\t"+selected)
+	}
+	return entries
+}
+
+func (ime *IME) MobileMenuEntries() []string {
+	ime.mu.Lock()
+	defer ime.mu.Unlock()
+	ime.createSession(nil)
+	return flattenMobileMenuEntries("", ime.buildMenu())
+}
+
+func (ime *IME) MobileCurrentSchemaID() string {
+	ime.mu.Lock()
+	defer ime.mu.Unlock()
+	ime.createSession(nil)
+	if ime.backend == nil {
+		return ""
+	}
+	return strings.TrimSpace(ime.backend.CurrentSchemaID())
+}
+
+func (ime *IME) MobileSelectSchema(schemaID string) bool {
+	ime.mu.Lock()
+	defer ime.mu.Unlock()
+	return ime.selectSchemaByIDLocked(schemaID)
+}
+
+func (ime *IME) MobileSelectSchemeSet(name string, seqNum int) *imecore.Response {
+	target := normalizeSchemeSetName(name)
+	names := availableSchemeSets()
+	for index, candidate := range names {
+		if candidate != target {
+			continue
+		}
+		commandID := schemeSetCommandID(index)
+		return ime.HandleRequest(&imecore.Request{
+			Method:      "onCommand",
+			SeqNum:      seqNum,
+			ID:          imecore.FlexibleID{Int: commandID, IsInt: true},
+			CommandType: commandID,
+			Data: map[string]interface{}{
+				"commandId": float64(commandID),
+				"source":    "android",
+			},
+		})
+	}
+	resp := imecore.NewResponse(seqNum, false)
+	resp.Error = fmt.Sprintf("unknown scheme set: %s", name)
+	return resp
+}
+
 func (ime *IME) handleSchemaCommand(commandID int) bool {
 	if ime.backend == nil {
 		return false
@@ -2342,17 +2456,83 @@ func (ime *IME) handleSchemaCommand(commandID int) bool {
 	if schemaID == "" {
 		return false
 	}
+	return ime.selectSchemaByIDLocked(schemaID)
+}
+
+func (ime *IME) selectSchemaByIDLocked(schemaID string) bool {
+	schemaID = strings.TrimSpace(schemaID)
+	if schemaID == "" {
+		return false
+	}
+	ime.createSession(nil)
+	if ime.backend == nil {
+		return false
+	}
+	if !schemaIDExists(schemaID, ime.backend.SchemaList()) {
+		return false
+	}
 	if !ime.backend.SelectSchema(schemaID) {
 		return false
 	}
 	ime.syncedSchemaID = schemaID
 	ime.setSyncedSchemaIDForCurrentSchemeSet(schemaID)
-	ime.saveAppearancePrefsWithReason("handleSchemaCommand")
+	ime.saveAppearancePrefsWithReason("selectSchemaByIDLocked")
 	if ime.inputStateShared {
 		ime.applySharedInputStateToBackend()
 		ime.syncSharedInputStateFromBackendIfChanged()
 	}
 	return true
+}
+
+func flattenMobileMenuEntries(group string, items []map[string]interface{}) []string {
+	entries := make([]string, 0, len(items))
+	for _, item := range items {
+		text := strings.TrimSpace(fmt.Sprint(item["text"]))
+		if text == "" {
+			continue
+		}
+		nextGroup := group
+		if nextGroup == "" {
+			nextGroup = text
+		} else {
+			nextGroup = nextGroup + "/" + text
+		}
+		if submenu, ok := item["submenu"].([]map[string]interface{}); ok {
+			entries = append(entries, flattenMobileMenuEntries(nextGroup, submenu)...)
+			continue
+		}
+		commandID := 0
+		if raw, ok := item["id"].(int); ok {
+			commandID = raw
+		}
+		checked, _ := item["checked"].(bool)
+		enabled := true
+		if raw, ok := item["enabled"].(bool); ok {
+			enabled = raw
+		}
+		entries = append(entries, strings.Join([]string{
+			sanitizeMobileMenuField(group),
+			fmt.Sprint(commandID),
+			sanitizeMobileMenuField(text),
+			boolString(checked),
+			boolString(enabled),
+		}, "\t"))
+	}
+	return entries
+}
+
+func sanitizeMobileMenuField(value string) string {
+	value = strings.ReplaceAll(value, "\t", " ")
+	value = strings.ReplaceAll(value, "\r", " ")
+	value = strings.ReplaceAll(value, "\n", " ")
+	return strings.TrimSpace(value)
+}
+
+func boolString(value bool) string {
+	if value {
+		return "1"
+	}
+	return "0"
 }
 
 func (ime *IME) updateLangStatus(req *imecore.Request, resp *imecore.Response) {
@@ -2920,6 +3100,14 @@ func (ime *IME) userDir() string {
 		return ""
 	}
 	return filepath.Join(root, currentSchemeSetName())
+}
+
+func logRimeSlow(operation string, start time.Time, format string, args ...interface{}) {
+	elapsed := time.Since(start)
+	if elapsed < rimeSlowLogThreshold {
+		return
+	}
+	log.Printf("RIME slow %s total=%s %s", operation, elapsed, fmt.Sprintf(format, args...))
 }
 
 func rimeLogDir() string {
