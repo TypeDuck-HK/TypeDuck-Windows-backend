@@ -34,10 +34,13 @@ func resetSchemeSetVersionForTest() {
 
 func moqiAppDataDir() string {
 	appData := os.Getenv("APPDATA")
-	if appData == "" {
-		return ""
+	if appData != "" {
+		return filepath.Join(appData, APP)
 	}
-	return filepath.Join(appData, APP)
+	if configDir, err := os.UserConfigDir(); err == nil && strings.TrimSpace(configDir) != "" {
+		return filepath.Join(configDir, APP)
+	}
+	return ""
 }
 
 func normalizeSchemeSetName(name string) string {

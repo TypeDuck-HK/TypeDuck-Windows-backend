@@ -958,13 +958,20 @@ func (ime *IME) Init(req *imecore.Request) bool {
 	ime.iconDir = filepath.Join(exeDir, "input_methods", "rime", "icons")
 	// After installation this resolves to e.g. C:\Program Files (x86)\Moqi\moqi-ime\input_methods\rime\data.
 	sharedDir := filepath.Join(exeDir, "input_methods", "rime", "data")
+	userDir := ime.userDir()
 
-	appData := os.Getenv("APPDATA")
-	if appData == "" {
+	if androidSharedDir, androidUserDir, ok := androidRimeDirs(); ok {
+		sharedDir = androidSharedDir
+		userDir = androidUserDir
+		if _, err := os.Stat(filepath.Join(userDir, "build")); os.IsNotExist(err) {
+			firstRun = true
+		}
+	}
+
+	if userDir == "" {
 		log.Println("未找到 APPDATA，原生 RIME 不可用")
 		return true
 	}
-	userDir := ime.userDir()
 	info, statErr := os.Stat(userDir)
 	if statErr != nil {
 		if os.IsNotExist(statErr) {
@@ -2889,6 +2896,9 @@ func (ime *IME) AIHotkeyDescription() string {
 }
 
 func (ime *IME) sharedDir() string {
+	if sharedDir, _, ok := androidRimeDirs(); ok {
+		return sharedDir
+	}
 	exePath, err := os.Executable()
 	if err != nil {
 		return ""
@@ -2897,6 +2907,9 @@ func (ime *IME) sharedDir() string {
 }
 
 func (ime *IME) userDir() string {
+	if _, userDir, ok := androidRimeDirs(); ok {
+		return userDir
+	}
 	root := moqiAppDataDir()
 	if root == "" {
 		return ""
