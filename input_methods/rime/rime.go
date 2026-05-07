@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -995,6 +996,10 @@ func (ime *IME) Init(req *imecore.Request) bool {
 		backendAvailable = true
 	} else {
 		ime.backend = nil
+		log.Printf("RIME 原生后端不可用 sharedDir=%s userDir=%s", sharedDir, userDir)
+		if runtime.GOOS == "android" {
+			return false
+		}
 	}
 	return true
 }

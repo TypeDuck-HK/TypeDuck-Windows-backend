@@ -20,20 +20,51 @@ var (
 	androidSharedDir string
 	androidUserDir   string
 	androidDirsOK    bool
+
+	androidDataRootMu sync.Mutex
+	androidBaseDir    string
 )
+
+func SetAndroidDataDir(path string) {
+	path = strings.TrimSpace(path)
+	androidDataRootMu.Lock()
+	defer androidDataRootMu.Unlock()
+	if androidBaseDir == path {
+		return
+	}
+	androidBaseDir = path
+	androidDirsOnce = sync.Once{}
+	androidSharedDir = ""
+	androidUserDir = ""
+	androidDirsOK = false
+}
+
+func androidAppDataRoot() string {
+	androidDataRootMu.Lock()
+	baseDir := androidBaseDir
+	androidDataRootMu.Unlock()
+
+	if baseDir == "" {
+		if configDir, err := os.UserConfigDir(); err == nil && strings.TrimSpace(configDir) != "" {
+			baseDir = configDir
+		} else {
+			baseDir = os.TempDir()
+		}
+	}
+	if strings.TrimSpace(baseDir) == "" {
+		return ""
+	}
+	return filepath.Join(baseDir, APP)
+}
 
 func androidRimeDirs() (sharedDir string, userDir string, ok bool) {
 	androidDirsOnce.Do(func() {
-		baseDir, err := os.UserConfigDir()
-		if err != nil || strings.TrimSpace(baseDir) == "" {
-			baseDir = os.TempDir()
-		}
-		if strings.TrimSpace(baseDir) == "" {
-			log.Printf("Android RIME 数据目录不可用: %v", err)
+		root := androidAppDataRoot()
+		if root == "" {
+			log.Printf("Android RIME 数据目录不可用")
 			return
 		}
 
-		root := filepath.Join(baseDir, APP)
 		androidSharedDir = filepath.Join(root, "rime_shared")
 		androidUserDir = filepath.Join(root, currentSchemeSetName())
 		if err := extractAndroidRimeData(androidSharedDir); err != nil {
@@ -45,6 +76,7 @@ func androidRimeDirs() (sharedDir string, userDir string, ok bool) {
 			return
 		}
 		androidDirsOK = true
+		log.Printf("Android RIME 数据目录已就绪 shared=%s user=%s", androidSharedDir, androidUserDir)
 	})
 	return androidSharedDir, androidUserDir, androidDirsOK
 }

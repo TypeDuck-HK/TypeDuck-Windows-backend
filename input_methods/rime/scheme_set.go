@@ -33,6 +33,9 @@ func resetSchemeSetVersionForTest() {
 }
 
 func moqiAppDataDir() string {
+	if root := androidAppDataRoot(); root != "" {
+		return root
+	}
 	appData := os.Getenv("APPDATA")
 	if appData != "" {
 		return filepath.Join(appData, APP)

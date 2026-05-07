@@ -39,6 +39,10 @@ func (l *StringList) Get(index int) string {
 	return l.values[index]
 }
 
+func SetAndroidDataDir(path string) {
+	rime.SetAndroidDataDir(path)
+}
+
 type MobileResponse struct {
 	Success            bool
 	ReturnValue        int
