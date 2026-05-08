@@ -90,7 +90,15 @@ func extractAndroidRimeData(dst string) error {
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		return err
 	}
-	return fs.WalkDir(androidRimeData, "data", func(path string, entry fs.DirEntry, walkErr error) error {
+	version := strings.TrimSpace(androidEmbeddedDataVersion())
+	if version != "" {
+		markerPath := filepath.Join(dst, ".moqi_embed_version")
+		if existing, err := os.ReadFile(markerPath); err == nil && strings.TrimSpace(string(existing)) == version {
+			log.Printf("Android RIME shared 数据未变化，跳过解压 shared=%s version=%s", dst, version)
+			return nil
+		}
+	}
+	if err := fs.WalkDir(androidRimeData, "data", func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
@@ -110,5 +118,19 @@ func extractAndroidRimeData(dst string) error {
 			return err
 		}
 		return os.WriteFile(target, content, 0o644)
-	})
+	}); err != nil {
+		return err
+	}
+	if version != "" {
+		return os.WriteFile(filepath.Join(dst, ".moqi_embed_version"), []byte(version+"\n"), 0o644)
+	}
+	return nil
+}
+
+func androidEmbeddedDataVersion() string {
+	content, err := androidRimeData.ReadFile("data/.moqi_embed_version")
+	if err != nil {
+		return ""
+	}
+	return string(content)
 }
