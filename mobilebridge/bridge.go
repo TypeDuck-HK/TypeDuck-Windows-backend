@@ -310,6 +310,11 @@ func (s *Session) applyResponse(resp *imecore.Response) *MobileResponse {
 		s.cursorPos = 0
 	}
 
+	message := resp.Message
+	if message == "" && resp.TrayNotification != nil {
+		message = resp.TrayNotification.Message
+	}
+
 	return &MobileResponse{
 		Success:            resp.Success,
 		ReturnValue:        resp.ReturnValue,
@@ -323,7 +328,7 @@ func (s *Session) applyResponse(resp *imecore.Response) *MobileResponse {
 		CandidateCursor:    resp.CandidateCursor,
 		HasCandidateCursor: resp.HasCandidateCursor,
 		SetSelKeys:         resp.SetSelKeys,
-		Message:            resp.Message,
+		Message:            message,
 		Error:              resp.Error,
 	}
 }
