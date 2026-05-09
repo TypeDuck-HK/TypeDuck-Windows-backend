@@ -16,9 +16,17 @@ function Invoke-Checked {
     )
 
     Write-Host ">> $FilePath $($Arguments -join ' ')"
-    & $FilePath @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "Command failed with exit code $LASTEXITCODE"
+    # CMake 等工具会把弃用提示写到 stderr；在 $ErrorActionPreference=Stop 时会被当成终止错误，误判为失败
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $FilePath @Arguments
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prevEap
+    }
+    if ($exitCode -ne 0) {
+        throw "Command failed with exit code $exitCode"
     }
 }
 

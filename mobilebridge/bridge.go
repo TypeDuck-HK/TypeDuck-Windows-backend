@@ -8,15 +8,13 @@ import (
 	"time"
 
 	"github.com/gaboolic/moqi-ime/imecore"
-	"github.com/gaboolic/moqi-ime/input_methods/fcitx5"
 	"github.com/gaboolic/moqi-ime/input_methods/moqi"
 	"github.com/gaboolic/moqi-ime/input_methods/rime"
 )
 
 const (
-	GUIDMoqi   = "{5C8E1D74-2F9A-4B63-91DE-7A45C8F2B306}"
-	GUIDRime   = "{3F6B5A12-8D44-4E71-9A2E-6B4F9C1D2A30}"
-	GUIDFcitx5 = "{D2E4A8B1-6C35-4F90-AB7D-18E2635C9F41}"
+	GUIDMoqi = "{5C8E1D74-2F9A-4B63-91DE-7A45C8F2B306}"
+	GUIDRime = "{3F6B5A12-8D44-4E71-9A2E-6B4F9C1D2A30}"
 
 	mobileSlowLogThreshold = 30 * time.Millisecond
 )
@@ -357,8 +355,6 @@ func newService(client *imecore.Client, guid string) (imecore.TextService, error
 		return moqi.New(client), nil
 	case strings.ToLower(GUIDRime):
 		return rime.New(client), nil
-	case strings.ToLower(GUIDFcitx5):
-		return fcitx5.New(client), nil
 	default:
 		return nil, fmt.Errorf("unknown input method guid: %s", guid)
 	}
