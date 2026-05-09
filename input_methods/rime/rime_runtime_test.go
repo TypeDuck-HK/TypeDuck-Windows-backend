@@ -16,13 +16,16 @@ import (
 func realRimeTestDirs(t *testing.T) (string, string) {
 	t.Helper()
 
-	appData := os.Getenv("APPDATA")
+	appData := os.Getenv("MOQI_REAL_APPDATA")
+	if appData == "" {
+		appData = os.Getenv("APPDATA")
+	}
 	if appData == "" {
 		t.Skip("APPDATA is not set")
 	}
 	userDir := filepath.Join(appData, APP, "Rime")
 	if info, err := os.Stat(userDir); err != nil || !info.IsDir() {
-		t.Skip("existing user Rime directory is required")
+		t.Skipf("existing user Rime directory is required: %q err=%v isDir=%t", userDir, err, err == nil && info.IsDir())
 	}
 
 	dataDirCandidates := []string{
@@ -126,6 +129,79 @@ func TestRealRimeCanCommitText(t *testing.T) {
 				t.Fatalf("expected converted text commit for %s, got %q", input, commit.Text)
 			}
 		})
+	}
+}
+
+func TestRealRimeGraveSeparatorParticipatesInComposition(t *testing.T) {
+	sessionID := newRealRimeSession(t)
+	ClearComposition(sessionID)
+	if !SelectSchema(sessionID, "rime_frost") {
+		t.Fatal("SelectSchema(rime_frost) failed")
+	}
+	SetOption(sessionID, "ascii_mode", false)
+	t.Logf("schema before typing: %q", GetCurrentSchema(sessionID))
+
+	steps := []struct {
+		name string
+		req  *imecore.Request
+	}{
+		{name: "m", req: &imecore.Request{KeyCode: int('m'), CharCode: int('m')}},
+		{name: "o", req: &imecore.Request{KeyCode: int('o'), CharCode: int('o')}},
+		{name: "grave", req: &imecore.Request{KeyCode: vkOem3, CharCode: int('`')}},
+		{name: "l", req: &imecore.Request{KeyCode: int('l'), CharCode: int('l')}},
+	}
+
+	for _, step := range steps {
+		handled := processRealKey(sessionID, step.req)
+		rawInput := GetInput(sessionID)
+		commit, _ := GetCommit(sessionID)
+		composition, _ := GetComposition(sessionID)
+		menu, _ := GetMenu(sessionID)
+		t.Logf("step=%s handled=%t rawInput=%q commit=%q preedit=%q candidates=%v",
+			step.name, handled, rawInput, commit.Text, composition.Preedit, menu.Candidates)
+		if !handled {
+			t.Fatalf("expected step %s to be handled", step.name)
+		}
+		if commit.Text != "" {
+			t.Fatalf("expected step %s to stay in composition, got commit %q", step.name, commit.Text)
+		}
+	}
+
+	if composition, ok := GetComposition(sessionID); !ok || composition.Preedit != "mo`l" {
+		t.Fatalf("expected composition to contain grave separator, got ok=%t composition=%#v", ok, composition)
+	}
+	if menu, ok := GetMenu(sessionID); !ok || len(menu.Candidates) == 0 {
+		t.Fatalf("expected candidates for mo`l, got ok=%t menu=%#v", ok, menu)
+	}
+}
+
+func TestRealRimeFlypyGraveAuxLookupHasCandidates(t *testing.T) {
+	sessionID := newRealRimeSession(t)
+	if !SelectSchema(sessionID, "rime_frost_double_pinyin_flypy") {
+		t.Fatal("SelectSchema(rime_frost_double_pinyin_flypy) failed")
+	}
+	SetOption(sessionID, "ascii_mode", false)
+
+	ClearComposition(sessionID)
+	steps := []*imecore.Request{
+		{KeyCode: int('m'), CharCode: int('m')},
+		{KeyCode: int('o'), CharCode: int('o')},
+		{KeyCode: vkOem3, CharCode: int('`')},
+		{KeyCode: int('l'), CharCode: int('l')},
+	}
+	for _, req := range steps {
+		if !processRealKey(sessionID, req) {
+			t.Fatalf("ProcessKey failed for keyCode=%d charCode=%d", req.KeyCode, req.CharCode)
+		}
+	}
+	composition, _ := GetComposition(sessionID)
+	menu, _ := GetMenu(sessionID)
+	t.Logf("preedit=%q candidates=%v", composition.Preedit, menu.Candidates)
+	if composition.Preedit != "mo`l" {
+		t.Fatalf("expected preedit %q, got %q", "mo`l", composition.Preedit)
+	}
+	if len(menu.Candidates) == 0 {
+		t.Fatalf("expected candidates for flypy grave aux lookup, got %v", menu.Candidates)
 	}
 }
 

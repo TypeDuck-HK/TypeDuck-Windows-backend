@@ -83,6 +83,9 @@ func availableSchemeSets() []string {
 		if !entry.IsDir() {
 			continue
 		}
+		if strings.HasPrefix(entry.Name(), ".") {
+			continue
+		}
 		name := normalizeSchemeSetName(entry.Name())
 		if name == "" {
 			continue

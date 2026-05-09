@@ -1451,8 +1451,8 @@ func TestBuildMenuIncludesSchemeSetSubmenuBeforeSchemaMenu(t *testing.T) {
 	}
 
 	submenu, ok := schemeSetMenu["submenu"].([]map[string]interface{})
-	if !ok || len(submenu) != 2 {
-		t.Fatalf("expected 2 scheme set submenu items, got %#v", schemeSetMenu["submenu"])
+	if !ok || len(submenu) != 4 {
+		t.Fatalf("expected 4 scheme set submenu items, got %#v", schemeSetMenu["submenu"])
 	}
 	if submenu[0]["text"] != defaultSchemeSetName {
 		t.Fatalf("expected default scheme set first, got %#v", submenu[0]["text"])
@@ -1462,6 +1462,12 @@ func TestBuildMenuIncludesSchemeSetSubmenuBeforeSchemaMenu(t *testing.T) {
 	}
 	if checked, _ := submenu[1]["checked"].(bool); !checked {
 		t.Fatalf("expected Work scheme set checked, got %#v", submenu[1])
+	}
+	if submenu[2]["text"] != "" {
+		t.Fatalf("expected separator before download item, got %#v", submenu[2])
+	}
+	if submenu[3]["text"] != "下载方案集(&D)" || submenu[3]["id"] != ID_DOWNLOAD_SCHEME_SET {
+		t.Fatalf("expected download item under scheme set submenu, got %#v", submenu[3])
 	}
 }
 
