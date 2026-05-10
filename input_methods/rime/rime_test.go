@@ -111,6 +111,7 @@ type testBackend struct {
 	getOptionCalls       int
 	toggleASCIIOnCtrlA   bool
 	disableArrowHandling bool
+	translatedKeyCodes   []int
 }
 
 func newTestBackend() *testBackend {
@@ -196,6 +197,7 @@ func (b *testBackend) ClearComposition() {
 }
 
 func (b *testBackend) ProcessKey(req *imecore.Request, translatedKeyCode, modifiers int) bool {
+	b.translatedKeyCodes = append(b.translatedKeyCodes, translatedKeyCode)
 	b.commitString = ""
 	keyCode := req.KeyCode
 	charCode := req.CharCode
@@ -474,6 +476,7 @@ func testDictionary() []testDictEntry {
 	return []testDictEntry{
 		{code: "ni", words: []candidateItem{{Text: "你"}, {Text: "呢"}, {Text: "泥"}, {Text: "尼"}, {Text: "拟"}}},
 		{code: "nihao", words: []candidateItem{{Text: "你好"}, {Text: "你号"}, {Text: "拟好"}}},
+		{code: "nihaoma", words: []candidateItem{{Text: "你好吗"}, {Text: "尼玛"}}},
 		{code: "nimen", words: []candidateItem{{Text: "你们"}}},
 		{code: "zhong", words: []candidateItem{{Text: "中"}, {Text: "种"}, {Text: "重"}}},
 		{code: "zhongwen", words: []candidateItem{{Text: "中文"}}},
@@ -631,6 +634,37 @@ func TestOnKeyDownReflectsBackendStateAfterFilter(t *testing.T) {
 	}
 	if len(resp.CandidateList) == 0 || resp.CandidateList[0] != "你" {
 		t.Fatalf("expected first exact candidate 你, got %v", resp.CandidateList)
+	}
+}
+
+func TestMobileReplayTextUsesSelectedPinyinVerbatim(t *testing.T) {
+	ime := newIsolatedTestIME(t)
+
+	resp := ime.MobileReplayText("ni'hao'ma", 1)
+	if !resp.Success || resp.ReturnValue != 1 {
+		t.Fatalf("expected replay to succeed, got %#v", resp)
+	}
+	if resp.CompositionString != "ni'hao'ma" {
+		t.Fatalf("expected composition ni'hao'ma, got %q", resp.CompositionString)
+	}
+	if len(resp.CandidateList) == 0 || resp.CandidateList[0] != "你好吗" {
+		t.Fatalf("expected first candidate 你好吗, got %#v", resp.CandidateList)
+	}
+}
+
+func TestMobileReplayTextSendsApostropheAsPrintableSeparator(t *testing.T) {
+	ime := newIsolatedTestIME(t)
+	backend := ime.backend.(*testBackend)
+
+	resp := ime.MobileReplayText("ni'hao", 1)
+	if !resp.Success || resp.ReturnValue != 1 {
+		t.Fatalf("expected replay to succeed, got %#v", resp)
+	}
+	if len(backend.translatedKeyCodes) < 3 {
+		t.Fatalf("expected translated keys to be recorded, got %v", backend.translatedKeyCodes)
+	}
+	if got := backend.translatedKeyCodes[2]; got != int('\'') {
+		t.Fatalf("expected apostrophe translated as printable separator %d, got %d (%v)", int('\''), got, backend.translatedKeyCodes)
 	}
 }
 

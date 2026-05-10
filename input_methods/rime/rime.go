@@ -229,6 +229,7 @@ type IME struct {
 	syncedSchemaID               string
 	syncedSchemaBySchemeSet      map[string]string
 	syncedSettingsNeedsApply     bool
+	activationUIRefreshPending   bool
 	autoPairQuotes               bool
 	semicolonSelectSecond        bool
 	rawInputTracked              string
@@ -375,15 +376,14 @@ func (ime *IME) HandleRequest(req *imecore.Request) *imecore.Response {
 
 func (ime *IME) onActivate(req *imecore.Request, resp *imecore.Response) *imecore.Response {
 	log.Println("RIME 输入法已激活")
-	ime.createSession(resp)
-	ime.addButtons(resp)
-	ime.updateLangStatus(req, resp)
+	ime.activationUIRefreshPending = true
 	resp.ReturnValue = 1
 	return resp
 }
 
 func (ime *IME) onDeactivate(req *imecore.Request, resp *imecore.Response) *imecore.Response {
 	log.Println("RIME 输入法已失活")
+	ime.activationUIRefreshPending = false
 	ime.destroySession(resp)
 	ime.removeButtons(resp)
 	resp.ReturnValue = 1
@@ -391,6 +391,7 @@ func (ime *IME) onDeactivate(req *imecore.Request, resp *imecore.Response) *imec
 }
 
 func (ime *IME) filterKeyDown(req *imecore.Request, resp *imecore.Response) *imecore.Response {
+	defer ime.flushPendingActivationUI(req, resp)
 	if ime.handleAIKeyDownFilter(req, resp) {
 		return resp
 	}
@@ -421,6 +422,29 @@ func (ime *IME) filterKeyDown(req *imecore.Request, resp *imecore.Response) *ime
 	ime.lastKeyUpCode = 0
 	resp.ReturnValue = boolToInt(ime.lastKeyDownRet)
 	return resp
+}
+
+func (ime *IME) flushPendingActivationUI(req *imecore.Request, resp *imecore.Response) {
+	if !ime.activationUIRefreshPending || resp == nil {
+		return
+	}
+	if ime.backend == nil || !ime.backendReady() {
+		return
+	}
+	start := time.Now()
+	ime.createSession(resp)
+	ime.addButtons(resp)
+	ime.updateLangStatus(req, resp)
+	ime.activationUIRefreshPending = false
+	clientID := ""
+	if ime.Client != nil {
+		clientID = ime.Client.ID
+	}
+	method := ""
+	if req != nil {
+		method = req.Method
+	}
+	logRimeSlow("activation.deferredUI", start, "client=%s method=%s", clientID, method)
 }
 
 func (ime *IME) filterKeyUp(req *imecore.Request, resp *imecore.Response) *imecore.Response {
@@ -462,6 +486,9 @@ func isAndroidSoftKeyboardRequest(req *imecore.Request) bool {
 
 func (ime *IME) currentInputModeState() (asciiMode bool, fullShape bool, ok bool) {
 	if ime.backend == nil {
+		return false, false, false
+	}
+	if !ime.backend.HasSession() {
 		return false, false, false
 	}
 	return ime.backend.GetOption("ascii_mode"), ime.backend.GetOption("full_shape"), true
@@ -2420,6 +2447,57 @@ func (ime *IME) MobileSelectSchema(schemaID string) bool {
 	ime.mu.Lock()
 	defer ime.mu.Unlock()
 	return ime.selectSchemaByIDLocked(schemaID)
+}
+
+func (ime *IME) MobileReplayText(text string, seqNum int) *imecore.Response {
+	ime.mu.Lock()
+	defer ime.mu.Unlock()
+
+	log.Printf("RIME MobileReplayText seq=%d text=%q", seqNum, text)
+	resp := imecore.NewResponse(seqNum, true)
+	ime.createSession(resp)
+	if ime.backend == nil {
+		resp.Success = false
+		resp.Error = "rime backend is not available"
+		log.Printf("RIME MobileReplayText failed seq=%d error=%q", seqNum, resp.Error)
+		return resp
+	}
+
+	ime.resetAIState()
+	ime.resetCustomPhraseOverlay()
+	ime.resetSuperAbbrevOverlay()
+	ime.resetSecondSelectionShortcut()
+	ime.resetTrackedRawInput()
+	ime.clearResponse(resp)
+	ime.backend.ClearComposition()
+	ime.keyComposing = false
+
+	for _, ch := range text {
+		req := &imecore.Request{
+			Method:   "replayText",
+			SeqNum:   seqNum,
+			KeyCode:  replayKeyCodeForRune(ch),
+			CharCode: int(ch),
+			Data: map[string]interface{}{
+				"source": "android",
+			},
+		}
+		ime.processKey(req, false)
+	}
+
+	ime.fillResponseFromCurrentState(resp)
+	resp.ReturnValue = 1
+	log.Printf("RIME MobileReplayText result seq=%d composition=%q candidates=%v", seqNum, resp.CompositionString, resp.CandidateList)
+	return resp
+}
+
+func replayKeyCodeForRune(ch rune) int {
+	// Apostrophe is the pinyin separator, but its ASCII code also equals vkRight.
+	// Leave KeyCode empty so translateKeyCode forwards it as a printable char.
+	if ch == '\'' {
+		return 0
+	}
+	return int(ch)
 }
 
 func (ime *IME) MobileSelectSchemeSet(name string, seqNum int) *imecore.Response {

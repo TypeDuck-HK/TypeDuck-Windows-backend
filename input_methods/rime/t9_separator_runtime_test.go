@@ -42,6 +42,9 @@ func TestRealRimeT9SeparatorProbe(t *testing.T) {
 		{input: "9426", wantPreedit: "9426"},
 		{input: "94126", wantPreedit: "94'26"},
 		{input: "94'26", wantPreedit: "94'26"},
+		{input: "6442662", wantPreedit: "64 426 62"},
+		{input: "64'426'62", wantPreedit: "64'426'62"},
+		{input: "ni'hao'ma", wantPreedit: "ni'hao'ma", wantFirst: "你好吗"},
 	}
 	for _, tc := range tests {
 		input := tc.input

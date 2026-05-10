@@ -151,6 +151,20 @@ func (s *Session) SelectCandidate(index int) *MobileResponse {
 	return s.handle("selectCandidate", 0, 0, index, false, 0)
 }
 
+func (s *Session) ReplayText(text string) *MobileResponse {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.seqNum++
+	if s.service == nil || s.closed {
+		return errorResponse(s.seqNum, fmt.Errorf("session is not initialized"))
+	}
+	if ime, ok := s.service.(*rime.IME); ok {
+		return s.applyResponse(ime.MobileReplayText(text, s.seqNum))
+	}
+	return errorResponse(s.seqNum, fmt.Errorf("replayText is only supported by rime sessions"))
+}
+
 func (s *Session) ChangePage(backward bool) *MobileResponse {
 	return s.handle("changePage", 0, 0, -1, backward, 0)
 }
