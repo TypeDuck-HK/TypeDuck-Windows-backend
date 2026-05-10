@@ -22,6 +22,7 @@ var debugLogState struct {
 	mu          sync.Mutex
 	lastRefresh time.Time
 	level       debugLogLevel
+	override    *debugLogLevel
 }
 
 type launcherDebugConfig struct {
@@ -51,6 +52,10 @@ func currentDebugLogLevel() debugLogLevel {
 	debugLogState.mu.Lock()
 	defer debugLogState.mu.Unlock()
 
+	if debugLogState.override != nil {
+		return *debugLogState.override
+	}
+
 	now := time.Now()
 	if !debugLogState.lastRefresh.IsZero() && now.Sub(debugLogState.lastRefresh) < time.Second {
 		return debugLogState.level
@@ -69,6 +74,19 @@ func currentDebugLogLevel() debugLogLevel {
 
 	debugLogState.lastRefresh = now
 	return debugLogState.level
+}
+
+func SetDebugLoggingEnabled(enabled bool) {
+	debugLogState.mu.Lock()
+	defer debugLogState.mu.Unlock()
+
+	level := debugLogLevelOff
+	if enabled {
+		level = debugLogLevelDebug
+	}
+	debugLogState.override = &level
+	debugLogState.level = level
+	debugLogState.lastRefresh = time.Now()
 }
 
 func isDebugLoggingEnabled() bool {

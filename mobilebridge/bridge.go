@@ -45,6 +45,10 @@ func SetAndroidDataDir(path string) {
 	rime.SetAndroidDataDir(path)
 }
 
+func SetDebugLoggingEnabled(enabled bool) {
+	rime.SetDebugLoggingEnabled(enabled)
+}
+
 type MobileResponse struct {
 	Success            bool
 	ReturnValue        int

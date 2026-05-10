@@ -92,7 +92,7 @@ func (ime *IME) downloadSchemeSetAsync(req *imecore.Request, resp *imecore.Respo
 		if displayName == "" {
 			displayName = inferSchemeSetNameFromURL(pkg.URL)
 		}
-		log.Printf("开始下载方案集 name=%q url=%q", displayName, pkg.URL)
+		debugLogf("开始下载方案集 name=%q url=%q", displayName, pkg.URL)
 		ime.sendAsyncTrayNotification(trayNotification("开始下载方案集: "+displayName, imecore.TrayNotificationIconInfo))
 
 		name, err := installSchemeSetPackage(ctx, pkg)
@@ -101,7 +101,7 @@ func (ime *IME) downloadSchemeSetAsync(req *imecore.Request, resp *imecore.Respo
 			ime.sendAsyncTrayNotification(trayNotification("下载方案集失败: "+shortErrorMessage(err), imecore.TrayNotificationIconError))
 			return
 		}
-		log.Printf("方案集下载完成 name=%q", name)
+		debugLogf("方案集下载完成 name=%q", name)
 		ime.sendAsyncTrayNotification(trayNotification("方案集已下载，正在部署: "+name, imecore.TrayNotificationIconInfo))
 
 		ime.mu.Lock()

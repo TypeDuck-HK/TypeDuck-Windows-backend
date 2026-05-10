@@ -375,14 +375,14 @@ func (ime *IME) HandleRequest(req *imecore.Request) *imecore.Response {
 }
 
 func (ime *IME) onActivate(req *imecore.Request, resp *imecore.Response) *imecore.Response {
-	log.Println("RIME 输入法已激活")
+	debugLogf("RIME 输入法已激活")
 	ime.activationUIRefreshPending = true
 	resp.ReturnValue = 1
 	return resp
 }
 
 func (ime *IME) onDeactivate(req *imecore.Request, resp *imecore.Response) *imecore.Response {
-	log.Println("RIME 输入法已失活")
+	debugLogf("RIME 输入法已失活")
 	ime.activationUIRefreshPending = false
 	ime.destroySession(resp)
 	ime.removeButtons(resp)
@@ -997,10 +997,10 @@ func (ime *IME) Init(req *imecore.Request) bool {
 	firstRun := false
 	backendAvailable := false
 	defer func() {
-		log.Printf("RIME 输入法初始化完成 elapsed=%s firstRun=%t backendAvailable=%t", time.Since(initStart), firstRun, backendAvailable)
+		debugLogf("RIME 输入法初始化完成 elapsed=%s firstRun=%t backendAvailable=%t", time.Since(initStart), firstRun, backendAvailable)
 	}()
 
-	log.Println("RIME 输入法初始化")
+	debugLogf("RIME 输入法初始化")
 	exePath, err := os.Executable()
 	if err != nil {
 		log.Printf("获取可执行文件路径失败，原生 RIME 不可用: %v", err)
@@ -1058,7 +1058,7 @@ func (ime *IME) Init(req *imecore.Request) bool {
 
 func (ime *IME) Close() {
 	ime.destroySession(nil)
-	log.Println("RIME 输入法关闭")
+	debugLogf("RIME 输入法关闭")
 }
 
 func (ime *IME) BackendAvailable() bool {
@@ -1788,7 +1788,7 @@ func (ime *IME) logShortcutTrace(req *imecore.Request, isUp bool, translatedKeyC
 	if isUp {
 		eventType = "up"
 	}
-	log.Printf(
+	debugLogf(
 		"RIME 快捷键追踪 event=%s keyCode=%d charCode=%d translatedKey=%d modifiers=%d ctrl=%t alt=%t backendRet=%t handled=%t composing=%t",
 		eventType,
 		req.KeyCode,
@@ -2045,7 +2045,7 @@ func (ime *IME) reloadAIConfig() error {
 	ime.aiActions = defaultAIActions(cfg)
 	ime.aiEnabled = ime.aiReviewGenerator != nil && len(ime.aiActions) > 0
 	ime.resetAIState()
-	log.Printf("AI 配置已重新加载 enabled=%t actions=%d", ime.aiEnabled, len(ime.aiActions))
+	debugLogf("AI 配置已重新加载 enabled=%t actions=%d", ime.aiEnabled, len(ime.aiActions))
 	return nil
 }
 
@@ -2453,7 +2453,7 @@ func (ime *IME) MobileReplayText(text string, seqNum int) *imecore.Response {
 	ime.mu.Lock()
 	defer ime.mu.Unlock()
 
-	log.Printf("RIME MobileReplayText seq=%d text=%q", seqNum, text)
+	debugLogf("RIME MobileReplayText seq=%d text=%q", seqNum, previewReplayText(text))
 	resp := imecore.NewResponse(seqNum, true)
 	ime.createSession(resp)
 	if ime.backend == nil {
@@ -2487,8 +2487,22 @@ func (ime *IME) MobileReplayText(text string, seqNum int) *imecore.Response {
 
 	ime.fillResponseFromCurrentState(resp)
 	resp.ReturnValue = 1
-	log.Printf("RIME MobileReplayText result seq=%d composition=%q candidates=%v", seqNum, resp.CompositionString, resp.CandidateList)
+	debugLogf(
+		"RIME MobileReplayText result seq=%d composition=%q candidateCount=%d",
+		seqNum,
+		resp.CompositionString,
+		len(resp.CandidateList),
+	)
 	return resp
+}
+
+func previewReplayText(text string) string {
+	const maxReplayLogRunes = 64
+	runes := []rune(text)
+	if len(runes) <= maxReplayLogRunes {
+		return text
+	}
+	return string(runes[:maxReplayLogRunes]) + "..."
 }
 
 func replayKeyCodeForRune(ch rune) int {

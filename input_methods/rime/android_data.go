@@ -69,7 +69,7 @@ func androidRimeDirs() (sharedDir string, userDir string, ok bool) {
 			return
 		}
 		androidDirsOK = true
-		log.Printf("Android RIME shared 数据目录已就绪 shared=%s", androidSharedDir)
+		debugLogf("Android RIME shared 数据目录已就绪 shared=%s", androidSharedDir)
 	})
 	if !androidDirsOK {
 		return androidSharedDir, "", false
@@ -94,7 +94,7 @@ func extractAndroidRimeData(dst string) error {
 	if version != "" {
 		markerPath := filepath.Join(dst, ".moqi_embed_version")
 		if existing, err := os.ReadFile(markerPath); err == nil && strings.TrimSpace(string(existing)) == version {
-			log.Printf("Android RIME shared 数据未变化，跳过解压 shared=%s version=%s", dst, version)
+			debugLogf("Android RIME shared 数据未变化，跳过解压 shared=%s version=%s", dst, version)
 			return nil
 		}
 	}
