@@ -228,6 +228,12 @@ type IME struct {
 	customPhraseConsumeKeyUpCode int
 	superAbbrevConsumeKeyUpCode  int
 	secondSelectConsumeKeyUpCode int
+	cloudClipboardActive         bool
+	cloudClipboardPending        bool
+	cloudClipboardEntries        []cloudClipboardEntry
+	cloudClipboardCursor         int
+	cloudClipboardPage           int
+	cloudClipboardRequestSeq     uint64
 }
 
 type aiAsyncResult struct {
@@ -347,6 +353,8 @@ func (ime *IME) HandleRequest(req *imecore.Request) *imecore.Response {
 		return ime.onKeyUp(req, resp)
 	case "onCompositionTerminated":
 		return ime.onCompositionTerminated(req, resp)
+	case "onPreservedKey":
+		return ime.onPreservedKey(req, resp)
 	case "onCommand":
 		return ime.onCommand(req, resp)
 	case "onMenu":
@@ -359,6 +367,8 @@ func (ime *IME) HandleRequest(req *imecore.Request) *imecore.Response {
 		return ime.changePage(req, resp)
 	case "deleteCandidateOnCurrentPage":
 		return ime.deleteCandidateOnCurrentPage(req, resp)
+	case "cloudClipboardUpload":
+		return ime.onCloudClipboardUpload(req, resp)
 	default:
 		resp.ReturnValue = 0
 		return resp
@@ -368,6 +378,7 @@ func (ime *IME) HandleRequest(req *imecore.Request) *imecore.Response {
 func (ime *IME) onActivate(req *imecore.Request, resp *imecore.Response) *imecore.Response {
 	debugLogf("RIME 输入法已激活")
 	ime.activationUIRefreshPending = true
+	resp.RemovePreservedKey = append(resp.RemovePreservedKey, cloudClipboardListPreservedKeyGUID)
 	resp.ReturnValue = 1
 	return resp
 }
@@ -375,15 +386,28 @@ func (ime *IME) onActivate(req *imecore.Request, resp *imecore.Response) *imecor
 func (ime *IME) onDeactivate(req *imecore.Request, resp *imecore.Response) *imecore.Response {
 	debugLogf("RIME 输入法已失活")
 	ime.activationUIRefreshPending = false
+	ime.resetCloudClipboardState()
+	resp.RemovePreservedKey = append(resp.RemovePreservedKey, cloudClipboardListPreservedKeyGUID)
 	ime.destroySession(resp)
 	ime.removeButtons(resp)
 	resp.ReturnValue = 1
 	return resp
 }
 
+func (ime *IME) onPreservedKey(req *imecore.Request, resp *imecore.Response) *imecore.Response {
+	if ime.handleCloudClipboardPreservedKey(req, resp) {
+		return resp
+	}
+	resp.ReturnValue = 0
+	return resp
+}
+
 func (ime *IME) filterKeyDown(req *imecore.Request, resp *imecore.Response) *imecore.Response {
 	defer ime.flushPendingActivationUI(req, resp)
 	if ime.handleAIKeyDownFilter(req, resp) {
+		return resp
+	}
+	if ime.handleCloudClipboardKeyDownFilter(req, resp) {
 		return resp
 	}
 	if ime.handleCustomPhraseKeyDownFilter(req, resp) {
@@ -394,6 +418,9 @@ func (ime *IME) filterKeyDown(req *imecore.Request, resp *imecore.Response) *ime
 	}
 	if ime.handleSecondSelectionKeyDownFilter(req, resp) {
 		return resp
+	}
+	if ime.activationUIRefreshPending {
+		ime.createSession(resp)
 	}
 	if !isAndroidSoftKeyboardRequest(req) && ime.lastKeyDownCode == req.KeyCode {
 		ime.lastKeySkip++
@@ -440,6 +467,9 @@ func (ime *IME) flushPendingActivationUI(req *imecore.Request, resp *imecore.Res
 
 func (ime *IME) filterKeyUp(req *imecore.Request, resp *imecore.Response) *imecore.Response {
 	if ime.handleAIKeyUpFilter(req, resp) {
+		return resp
+	}
+	if ime.handleCloudClipboardKeyUpFilter(req, resp) {
 		return resp
 	}
 	if ime.handleCustomPhraseKeyUpFilter(req, resp) {
@@ -501,6 +531,9 @@ func (ime *IME) onKeyDown(req *imecore.Request, resp *imecore.Response) *imecore
 	if ime.handleAIKeyDown(req, resp) {
 		return resp
 	}
+	if ime.handleCloudClipboardKeyDown(req, resp) {
+		return resp
+	}
 	if ime.handleCustomPhraseKeyDown(req, resp) {
 		return resp
 	}
@@ -520,6 +553,9 @@ func (ime *IME) onKeyDown(req *imecore.Request, resp *imecore.Response) *imecore
 
 func (ime *IME) onKeyUp(req *imecore.Request, resp *imecore.Response) *imecore.Response {
 	if ime.handleAIKeyUp(req, resp) {
+		return resp
+	}
+	if ime.handleCloudClipboardKeyUp(req, resp) {
 		return resp
 	}
 	if ime.handleCustomPhraseKeyUp(req, resp) {
@@ -560,7 +596,18 @@ func (ime *IME) deleteCandidateOnCurrentPage(req *imecore.Request, resp *imecore
 }
 
 func (ime *IME) onCompositionTerminated(req *imecore.Request, resp *imecore.Response) *imecore.Response {
-	ime.resetAIState()
+	if ime.aiPending && !req.Forced {
+		debugLogf("AI 请求等待中，忽略非强制 composition terminated，保留异步结果 seq=%d prompt=%q", ime.aiRequestSeq, ime.aiPrompt)
+	} else {
+		ime.resetAIState()
+	}
+	if (ime.cloudClipboardActive || ime.cloudClipboardPending) && !req.Forced {
+		debugLogf("云剪贴板候选显示中，忽略非强制 composition terminated active=%t pending=%t", ime.cloudClipboardActive, ime.cloudClipboardPending)
+		ime.fillCloudClipboardResponse(resp)
+		resp.ReturnValue = 1
+		return resp
+	}
+	ime.resetCloudClipboardState()
 	ime.resetCustomPhraseOverlay()
 	ime.resetSuperAbbrevOverlay()
 	ime.resetSecondSelectionShortcut()
@@ -901,6 +948,15 @@ func (ime *IME) onCommand(req *imecore.Request, resp *imecore.Response) *imecore
 		ime.openURL(helpDocsURL)
 	case ID_DISCUSSIONS:
 		ime.openURL(discussionURL)
+	case ID_CLOUD_CLIPBOARD_SETTINGS:
+		if !ime.openCloudClipboardSettingsAsync(resp) {
+			resp.ReturnValue = 0
+			return resp
+		}
+	case ID_CLOUD_CLIPBOARD_ENABLED:
+		ime.toggleCloudClipboardEnabled(resp)
+	case ID_CLOUD_CLIPBOARD_TEST:
+		ime.testCloudClipboardConnectionCommand(resp)
 	default:
 		previousCandidateCount := ime.candidateCount()
 		if commandID == ID_SHARED_INPUT_STATE {
@@ -1395,6 +1451,7 @@ func (ime *IME) triggerAIReview(action *aiAction) bool {
 				result.Err = fmt.Errorf("empty AI result")
 			}
 		}
+		debugLogf("AI 异步结果返回 seq=%d prompt=%q candidates=%d err=%v", requestSeq, composition, len(result.Candidates), result.Err)
 		if sender != nil {
 			var updateResp *imecore.Response
 			ime.mu.Lock()
@@ -1418,6 +1475,7 @@ func (ime *IME) triggerAIReview(action *aiAction) bool {
 
 func (ime *IME) applyAIAsyncResult(result aiAsyncResult) bool {
 	if result.RequestSeq != ime.aiRequestSeq {
+		debugLogf("AI 异步结果丢弃: seq mismatch result=%d current=%d", result.RequestSeq, ime.aiRequestSeq)
 		return false
 	}
 	ime.aiPending = false
@@ -1444,10 +1502,12 @@ func (ime *IME) applyAIAsyncResult(result aiAsyncResult) bool {
 	if ime.backend != nil && ime.backendReady() {
 		state := ime.backend.State()
 		if strings.TrimSpace(state.Composition) != strings.TrimSpace(result.Prompt) {
+			debugLogf("AI 异步结果丢弃: composition changed result=%q current=%q", result.Prompt, state.Composition)
 			ime.resetAIState()
 			return false
 		}
 	}
+	debugLogf("AI 异步结果已应用 seq=%d candidates=%d", result.RequestSeq, len(ime.aiCandidates))
 	return ime.aiActive
 }
 
@@ -1694,6 +1754,9 @@ func (ime *IME) applyCandidateHighlight(req *imecore.Request, resp *imecore.Resp
 		ime.fillAIResponse(resp)
 		return true
 	}
+	if ime.applyCloudClipboardCandidateHighlight(req, resp) {
+		return true
+	}
 	if _, customCandidates, backendIndexes, ok := ime.currentCustomPhraseOverlay(); ok {
 		total := len(customCandidates) + len(backendIndexes)
 		if index >= total {
@@ -1723,6 +1786,9 @@ func (ime *IME) applyCandidateSelection(req *imecore.Request, resp *imecore.Resp
 		}
 		return ime.commitBackendOverlayCandidate(resp, index-aiCandidates)
 	}
+	if ime.applyCloudClipboardCandidateSelection(req, resp) {
+		return true
+	}
 	if _, customCandidates, backendIndexes, ok := ime.currentCustomPhraseOverlay(); ok {
 		total := len(customCandidates) + len(backendIndexes)
 		if index >= total {
@@ -1749,6 +1815,11 @@ func (ime *IME) applyCandidatePageChange(req *imecore.Request, resp *imecore.Res
 	if ime.aiActive {
 		ime.fillAIResponse(resp)
 		return false
+	}
+	if ime.cloudClipboardActive {
+		ime.changeCloudClipboardPage(req.PageBackward, resp)
+		ime.fillCloudClipboardResponse(resp)
+		return true
 	}
 	if _, _, _, ok := ime.currentCustomPhraseOverlay(); ok {
 		ime.fillResponseFromCurrentState(resp)
@@ -1855,6 +1926,10 @@ func (ime *IME) shouldPassThroughModifierOnKey(req *imecore.Request, filterHandl
 func (ime *IME) onKey(req *imecore.Request, resp *imecore.Response) bool {
 	if ime.aiActive {
 		ime.fillAIResponse(resp)
+		return true
+	}
+	if ime.cloudClipboardActive {
+		ime.fillCloudClipboardResponse(resp)
 		return true
 	}
 	if ime.backend == nil {
@@ -2194,6 +2269,10 @@ func (ime *IME) fillResponseFromBackendState(resp *imecore.Response, allowCommit
 func (ime *IME) fillResponseFromCurrentState(resp *imecore.Response) {
 	if ime.aiActive {
 		ime.fillAIResponse(resp)
+		return
+	}
+	if ime.cloudClipboardActive {
+		ime.fillCloudClipboardResponse(resp)
 		return
 	}
 	ime.fillResponseFromBackendState(resp, false)
@@ -3181,6 +3260,7 @@ func (ime *IME) buildMenu() []map[string]interface{} {
 			{"id": ID_OPEN_AUTO_PAIR_SYMBOLS, "text": "打开成对符号设置"},
 			{"id": ID_INPUT_SEMICOLON_SELECT_SECOND, "text": "分号键次选", "checked": ime.semicolonSelectSecond},
 		}},
+		ime.cloudClipboardMenuSection(),
 		map[string]interface{}{"text": "打开文件夹(&O)", "submenu": []map[string]interface{}{
 			{"id": ID_USER_DIR, "text": "用户文件夹"},
 			{"id": ID_SHARED_DIR, "text": "共享文件夹"},

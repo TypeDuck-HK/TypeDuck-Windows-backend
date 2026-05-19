@@ -56,16 +56,17 @@ type Request struct {
 	ScanCode          int
 	IsExtended        bool
 	KeyStates         KeyStates
-	CompositionString string
-	CandidateList     []string
-	CandidateIndex    int
-	HasCandidateIndex bool
-	PageBackward      bool
-	ShowCandidates    bool
-	CursorPos         int
-	SelStart          int
-	SelEnd            int
-	Data              map[string]interface{}
+	CompositionString   string
+	CandidateList       []string
+	CandidateIndex      int
+	HasCandidateIndex   bool
+	PageBackward        bool
+	ShowCandidates      bool
+	CursorPos           int
+	SelStart            int
+	SelEnd              int
+	CloudClipboardText  string
+	Data                map[string]interface{}
 }
 
 // ButtonInfo 按钮信息
@@ -229,6 +230,9 @@ func ParseProtoRequest(msg *moqipb.ClientRequest) *Request {
 	if msg.PageBackward != nil {
 		req.PageBackward = msg.GetPageBackward()
 	}
+	if text := msg.GetCloudClipboardText(); text != "" {
+		req.CloudClipboardText = text
+	}
 
 	return req
 }
@@ -345,6 +349,8 @@ func methodFromProto(method moqipb.Method) string {
 		return "selectCandidate"
 	case moqipb.Method_METHOD_CHANGE_PAGE:
 		return "changePage"
+	case moqipb.Method_METHOD_CLOUD_CLIPBOARD_UPLOAD:
+		return "cloudClipboardUpload"
 	default:
 		return ""
 	}
@@ -388,6 +394,8 @@ func MethodToProto(method string) moqipb.Method {
 		return moqipb.Method_METHOD_SELECT_CANDIDATE
 	case "changePage":
 		return moqipb.Method_METHOD_CHANGE_PAGE
+	case "cloudClipboardUpload":
+		return moqipb.Method_METHOD_CLOUD_CLIPBOARD_UPLOAD
 	default:
 		return moqipb.Method_METHOD_UNSPECIFIED
 	}

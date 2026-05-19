@@ -43,6 +43,7 @@ const (
 	Method_METHOD_HIGHLIGHT_CANDIDATE        Method = 16
 	Method_METHOD_SELECT_CANDIDATE           Method = 17
 	Method_METHOD_CHANGE_PAGE                Method = 18
+	Method_METHOD_CLOUD_CLIPBOARD_UPLOAD     Method = 19
 )
 
 // Enum value maps for Method.
@@ -67,6 +68,7 @@ var (
 		16: "METHOD_HIGHLIGHT_CANDIDATE",
 		17: "METHOD_SELECT_CANDIDATE",
 		18: "METHOD_CHANGE_PAGE",
+		19: "METHOD_CLOUD_CLIPBOARD_UPLOAD",
 	}
 	Method_value = map[string]int32{
 		"METHOD_UNSPECIFIED":                0,
@@ -88,6 +90,7 @@ var (
 		"METHOD_HIGHLIGHT_CANDIDATE":        16,
 		"METHOD_SELECT_CANDIDATE":           17,
 		"METHOD_CHANGE_PAGE":                18,
+		"METHOD_CLOUD_CLIPBOARD_UPLOAD":     19,
 	}
 )
 
@@ -947,34 +950,35 @@ func (x *TrayNotification) GetIcon() TrayNotificationIcon {
 }
 
 type ClientRequest struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	SeqNum            uint32                 `protobuf:"varint,1,opt,name=seq_num,json=seqNum,proto3" json:"seq_num,omitempty"`
-	Method            Method                 `protobuf:"varint,2,opt,name=method,proto3,enum=moqi.protocol.Method" json:"method,omitempty"`
-	Guid              *string                `protobuf:"bytes,3,opt,name=guid,proto3,oneof" json:"guid,omitempty"`
-	IsWindows8Above   bool                   `protobuf:"varint,4,opt,name=is_windows8_above,json=isWindows8Above,proto3" json:"is_windows8_above,omitempty"`
-	IsMetroApp        bool                   `protobuf:"varint,5,opt,name=is_metro_app,json=isMetroApp,proto3" json:"is_metro_app,omitempty"`
-	IsUiLess          bool                   `protobuf:"varint,6,opt,name=is_ui_less,json=isUiLess,proto3" json:"is_ui_less,omitempty"`
-	IsConsole         bool                   `protobuf:"varint,7,opt,name=is_console,json=isConsole,proto3" json:"is_console,omitempty"`
-	Opened            bool                   `protobuf:"varint,8,opt,name=opened,proto3" json:"opened,omitempty"`
-	Forced            bool                   `protobuf:"varint,9,opt,name=forced,proto3" json:"forced,omitempty"`
-	CommandType       uint32                 `protobuf:"varint,10,opt,name=command_type,json=commandType,proto3" json:"command_type,omitempty"`
-	KeyEvent          *KeyEvent              `protobuf:"bytes,11,opt,name=key_event,json=keyEvent,proto3" json:"key_event,omitempty"`
-	CompositionString string                 `protobuf:"bytes,12,opt,name=composition_string,json=compositionString,proto3" json:"composition_string,omitempty"`
-	CandidateList     []string               `protobuf:"bytes,13,rep,name=candidate_list,json=candidateList,proto3" json:"candidate_list,omitempty"`
-	ShowCandidates    bool                   `protobuf:"varint,14,opt,name=show_candidates,json=showCandidates,proto3" json:"show_candidates,omitempty"`
-	CursorPos         int32                  `protobuf:"varint,15,opt,name=cursor_pos,json=cursorPos,proto3" json:"cursor_pos,omitempty"`
-	SelStart          int32                  `protobuf:"varint,16,opt,name=sel_start,json=selStart,proto3" json:"sel_start,omitempty"`
-	SelEnd            int32                  `protobuf:"varint,17,opt,name=sel_end,json=selEnd,proto3" json:"sel_end,omitempty"`
-	ButtonId          *string                `protobuf:"bytes,18,opt,name=button_id,json=buttonId,proto3,oneof" json:"button_id,omitempty"`
-	CommandId         *uint32                `protobuf:"varint,19,opt,name=command_id,json=commandId,proto3,oneof" json:"command_id,omitempty"`
-	PreservedKeyGuid  *string                `protobuf:"bytes,20,opt,name=preserved_key_guid,json=preservedKeyGuid,proto3,oneof" json:"preserved_key_guid,omitempty"`
-	CompartmentGuid   *string                `protobuf:"bytes,21,opt,name=compartment_guid,json=compartmentGuid,proto3,oneof" json:"compartment_guid,omitempty"`
-	IsKeyboardOpen    bool                   `protobuf:"varint,22,opt,name=is_keyboard_open,json=isKeyboardOpen,proto3" json:"is_keyboard_open,omitempty"`
-	ClientId          *string                `protobuf:"bytes,23,opt,name=client_id,json=clientId,proto3,oneof" json:"client_id,omitempty"`
-	CandidateIndex    *int32                 `protobuf:"varint,24,opt,name=candidate_index,json=candidateIndex,proto3,oneof" json:"candidate_index,omitempty"`
-	PageBackward      *bool                  `protobuf:"varint,25,opt,name=page_backward,json=pageBackward,proto3,oneof" json:"page_backward,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	SeqNum             uint32                 `protobuf:"varint,1,opt,name=seq_num,json=seqNum,proto3" json:"seq_num,omitempty"`
+	Method             Method                 `protobuf:"varint,2,opt,name=method,proto3,enum=moqi.protocol.Method" json:"method,omitempty"`
+	Guid               *string                `protobuf:"bytes,3,opt,name=guid,proto3,oneof" json:"guid,omitempty"`
+	IsWindows8Above    bool                   `protobuf:"varint,4,opt,name=is_windows8_above,json=isWindows8Above,proto3" json:"is_windows8_above,omitempty"`
+	IsMetroApp         bool                   `protobuf:"varint,5,opt,name=is_metro_app,json=isMetroApp,proto3" json:"is_metro_app,omitempty"`
+	IsUiLess           bool                   `protobuf:"varint,6,opt,name=is_ui_less,json=isUiLess,proto3" json:"is_ui_less,omitempty"`
+	IsConsole          bool                   `protobuf:"varint,7,opt,name=is_console,json=isConsole,proto3" json:"is_console,omitempty"`
+	Opened             bool                   `protobuf:"varint,8,opt,name=opened,proto3" json:"opened,omitempty"`
+	Forced             bool                   `protobuf:"varint,9,opt,name=forced,proto3" json:"forced,omitempty"`
+	CommandType        uint32                 `protobuf:"varint,10,opt,name=command_type,json=commandType,proto3" json:"command_type,omitempty"`
+	KeyEvent           *KeyEvent              `protobuf:"bytes,11,opt,name=key_event,json=keyEvent,proto3" json:"key_event,omitempty"`
+	CompositionString  string                 `protobuf:"bytes,12,opt,name=composition_string,json=compositionString,proto3" json:"composition_string,omitempty"`
+	CandidateList      []string               `protobuf:"bytes,13,rep,name=candidate_list,json=candidateList,proto3" json:"candidate_list,omitempty"`
+	ShowCandidates     bool                   `protobuf:"varint,14,opt,name=show_candidates,json=showCandidates,proto3" json:"show_candidates,omitempty"`
+	CursorPos          int32                  `protobuf:"varint,15,opt,name=cursor_pos,json=cursorPos,proto3" json:"cursor_pos,omitempty"`
+	SelStart           int32                  `protobuf:"varint,16,opt,name=sel_start,json=selStart,proto3" json:"sel_start,omitempty"`
+	SelEnd             int32                  `protobuf:"varint,17,opt,name=sel_end,json=selEnd,proto3" json:"sel_end,omitempty"`
+	ButtonId           *string                `protobuf:"bytes,18,opt,name=button_id,json=buttonId,proto3,oneof" json:"button_id,omitempty"`
+	CommandId          *uint32                `protobuf:"varint,19,opt,name=command_id,json=commandId,proto3,oneof" json:"command_id,omitempty"`
+	PreservedKeyGuid   *string                `protobuf:"bytes,20,opt,name=preserved_key_guid,json=preservedKeyGuid,proto3,oneof" json:"preserved_key_guid,omitempty"`
+	CompartmentGuid    *string                `protobuf:"bytes,21,opt,name=compartment_guid,json=compartmentGuid,proto3,oneof" json:"compartment_guid,omitempty"`
+	IsKeyboardOpen     bool                   `protobuf:"varint,22,opt,name=is_keyboard_open,json=isKeyboardOpen,proto3" json:"is_keyboard_open,omitempty"`
+	ClientId           *string                `protobuf:"bytes,23,opt,name=client_id,json=clientId,proto3,oneof" json:"client_id,omitempty"`
+	CandidateIndex     *int32                 `protobuf:"varint,24,opt,name=candidate_index,json=candidateIndex,proto3,oneof" json:"candidate_index,omitempty"`
+	PageBackward       *bool                  `protobuf:"varint,25,opt,name=page_backward,json=pageBackward,proto3,oneof" json:"page_backward,omitempty"`
+	CloudClipboardText *string                `protobuf:"bytes,26,opt,name=cloud_clipboard_text,json=cloudClipboardText,proto3,oneof" json:"cloud_clipboard_text,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ClientRequest) Reset() {
@@ -1180,6 +1184,13 @@ func (x *ClientRequest) GetPageBackward() bool {
 		return *x.PageBackward
 	}
 	return false
+}
+
+func (x *ClientRequest) GetCloudClipboardText() string {
+	if x != nil && x.CloudClipboardText != nil {
+		return *x.CloudClipboardText
+	}
+	return ""
 }
 
 type ServerResponse struct {
@@ -1521,7 +1532,7 @@ const file_proto_moqi_proto_rawDesc = "" +
 	"\x10TrayNotification\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x127\n" +
-	"\x04icon\x18\x03 \x01(\x0e2#.moqi.protocol.TrayNotificationIconR\x04icon\"\xab\b\n" +
+	"\x04icon\x18\x03 \x01(\x0e2#.moqi.protocol.TrayNotificationIconR\x04icon\"\xfb\b\n" +
 	"\rClientRequest\x12\x17\n" +
 	"\aseq_num\x18\x01 \x01(\rR\x06seqNum\x12-\n" +
 	"\x06method\x18\x02 \x01(\x0e2\x15.moqi.protocol.MethodR\x06method\x12\x17\n" +
@@ -1553,7 +1564,8 @@ const file_proto_moqi_proto_rawDesc = "" +
 	"\x10is_keyboard_open\x18\x16 \x01(\bR\x0eisKeyboardOpen\x12 \n" +
 	"\tclient_id\x18\x17 \x01(\tH\x05R\bclientId\x88\x01\x01\x12,\n" +
 	"\x0fcandidate_index\x18\x18 \x01(\x05H\x06R\x0ecandidateIndex\x88\x01\x01\x12(\n" +
-	"\rpage_backward\x18\x19 \x01(\bH\aR\fpageBackward\x88\x01\x01B\a\n" +
+	"\rpage_backward\x18\x19 \x01(\bH\aR\fpageBackward\x88\x01\x01\x125\n" +
+	"\x14cloud_clipboard_text\x18\x1a \x01(\tH\bR\x12cloudClipboardText\x88\x01\x01B\a\n" +
 	"\x05_guidB\f\n" +
 	"\n" +
 	"_button_idB\r\n" +
@@ -1563,7 +1575,8 @@ const file_proto_moqi_proto_rawDesc = "" +
 	"\n" +
 	"_client_idB\x12\n" +
 	"\x10_candidate_indexB\x10\n" +
-	"\x0e_page_backward\"\xb6\n" +
+	"\x0e_page_backwardB\x17\n" +
+	"\x15_cloud_clipboard_text\"\xb6\n" +
 	"\n" +
 	"\x0eServerResponse\x12 \n" +
 	"\tclient_id\x18\x01 \x01(\tH\x00R\bclientId\x88\x01\x01\x12\x17\n" +
@@ -1603,7 +1616,7 @@ const file_proto_moqi_proto_rawDesc = "" +
 	"\x11_candidate_cursorB\x0f\n" +
 	"\r_customize_uiB\x0f\n" +
 	"\r_show_messageB\x14\n" +
-	"\x12_tray_notification*\x8c\x04\n" +
+	"\x12_tray_notification*\xaf\x04\n" +
 	"\x06Method\x12\x16\n" +
 	"\x12METHOD_UNSPECIFIED\x10\x00\x12\x0f\n" +
 	"\vMETHOD_INIT\x10\x01\x12\x10\n" +
@@ -1624,7 +1637,8 @@ const file_proto_moqi_proto_rawDesc = "" +
 	" METHOD_ON_LANG_PROFILE_ACTIVATED\x10\x0f\x12\x1e\n" +
 	"\x1aMETHOD_HIGHLIGHT_CANDIDATE\x10\x10\x12\x1b\n" +
 	"\x17METHOD_SELECT_CANDIDATE\x10\x11\x12\x16\n" +
-	"\x12METHOD_CHANGE_PAGE\x10\x12*o\n" +
+	"\x12METHOD_CHANGE_PAGE\x10\x12\x12!\n" +
+	"\x1dMETHOD_CLOUD_CLIPBOARD_UPLOAD\x10\x13*o\n" +
 	"\n" +
 	"ButtonType\x12\x1b\n" +
 	"\x17BUTTON_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +

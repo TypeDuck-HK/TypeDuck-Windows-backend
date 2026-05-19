@@ -80,7 +80,9 @@ const (
 	vkRControl  = 0xA3
 	vkLMenu     = 0xA4
 	vkRMenu     = 0xA5
+	vkOemPlus   = 0xBB
 	vkOem1      = 0xBA
+	vkOemMinus  = 0xBD
 	vkOemPeriod = 0xBE
 	vkOem3      = 0xC0
 	vkF1        = 0x70
