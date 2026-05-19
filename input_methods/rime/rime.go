@@ -109,6 +109,7 @@ const (
 	ID_APPEARANCE_CAND_COUNT_5                 = 191
 	ID_APPEARANCE_CAND_COUNT_7                 = 192
 	ID_APPEARANCE_CAND_COUNT_9                 = 193
+	ID_APPEARANCE_IMPORT_SKIN                  = 215
 	ID_SHARED_INPUT_STATE                      = 210
 	ID_INPUT_AUTO_PAIR_QUOTES                  = 220
 	ID_INPUT_SEMICOLON_SELECT_SECOND           = 221
@@ -872,6 +873,11 @@ func (ime *IME) onCommand(req *imecore.Request, resp *imecore.Response) *imecore
 		}
 	case ID_DOWNLOAD_SCHEME_SET:
 		if !ime.downloadSchemeSetAsync(req, resp) {
+			resp.ReturnValue = 0
+			return resp
+		}
+	case ID_APPEARANCE_IMPORT_SKIN:
+		if !ime.importAppearanceSkinAsync(resp) {
 			resp.ReturnValue = 0
 			return resp
 		}
@@ -3189,6 +3195,8 @@ func (ime *IME) buildMenu() []map[string]interface{} {
 				{"id": ID_APPEARANCE_HLTEXT_WHITE, "text": "白色", "checked": strings.EqualFold(ime.style.CandidateHighlightTextColor, "#ffffff")},
 				{"id": ID_APPEARANCE_HLTEXT_BLUE, "text": "深蓝", "checked": strings.EqualFold(ime.style.CandidateHighlightTextColor, "#1d4ed8")},
 			}},
+			{"text": ""},
+			{"id": ID_APPEARANCE_IMPORT_SKIN, "text": "导入皮肤"},
 		}},
 		map[string]interface{}{"text": "输入设置", "submenu": []map[string]interface{}{
 			{"id": ID_INPUT_AUTO_PAIR_QUOTES, "text": "自动插入成对符号", "checked": ime.autoPairQuotes},

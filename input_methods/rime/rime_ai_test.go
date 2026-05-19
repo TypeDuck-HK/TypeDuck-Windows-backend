@@ -128,6 +128,17 @@ func (b *fakeBackend) ChangePage(backward bool) bool {
 	return true
 }
 
+func (b *fakeBackend) DeleteCandidateOnCurrentPage(index int) bool {
+	if index < 0 || index >= len(b.state.Candidates) {
+		return false
+	}
+	b.state.Candidates = append(b.state.Candidates[:index], b.state.Candidates[index+1:]...)
+	if b.state.CandidateCursor >= len(b.state.Candidates) && len(b.state.Candidates) > 0 {
+		b.state.CandidateCursor = len(b.state.Candidates) - 1
+	}
+	return true
+}
+
 func newTestIMEWithBackend(backend rimeBackend) *IME {
 	ime := New(&imecore.Client{}).(*IME)
 	ime.backend = backend

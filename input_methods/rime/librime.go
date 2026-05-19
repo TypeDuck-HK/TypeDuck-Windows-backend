@@ -167,9 +167,10 @@ var (
 		destroySession        *syscall.LazyProc
 		processKey            *syscall.LazyProc
 		selectCandidate       *syscall.LazyProc
-		highlightCandidate    *syscall.LazyProc
-		changePage            *syscall.LazyProc
-		clearComposition      *syscall.LazyProc
+		highlightCandidate            *syscall.LazyProc
+		changePage                    *syscall.LazyProc
+		deleteCandidateOnCurrentPage  *syscall.LazyProc
+		clearComposition              *syscall.LazyProc
 		getInput              *syscall.LazyProc
 		getCommit             *syscall.LazyProc
 		freeCommit            *syscall.LazyProc
@@ -223,9 +224,10 @@ func loadRimeDLL(dllPath string) error {
 		destroySession        *syscall.LazyProc
 		processKey            *syscall.LazyProc
 		selectCandidate       *syscall.LazyProc
-		highlightCandidate    *syscall.LazyProc
-		changePage            *syscall.LazyProc
-		clearComposition      *syscall.LazyProc
+		highlightCandidate            *syscall.LazyProc
+		changePage                    *syscall.LazyProc
+		deleteCandidateOnCurrentPage  *syscall.LazyProc
+		clearComposition              *syscall.LazyProc
 		getInput              *syscall.LazyProc
 		getCommit             *syscall.LazyProc
 		freeCommit            *syscall.LazyProc
@@ -264,9 +266,10 @@ func loadRimeDLL(dllPath string) error {
 		destroySession:        dll.NewProc("RimeDestroySession"),
 		processKey:            dll.NewProc("RimeProcessKey"),
 		selectCandidate:       dll.NewProc("RimeSelectCandidateOnCurrentPage"),
-		highlightCandidate:    dll.NewProc("RimeHighlightCandidateOnCurrentPage"),
-		changePage:            dll.NewProc("RimeChangePage"),
-		clearComposition:      dll.NewProc("RimeClearComposition"),
+		highlightCandidate:           dll.NewProc("RimeHighlightCandidateOnCurrentPage"),
+		changePage:                   dll.NewProc("RimeChangePage"),
+		deleteCandidateOnCurrentPage: dll.NewProc("RimeDeleteCandidateOnCurrentPage"),
+		clearComposition:             dll.NewProc("RimeClearComposition"),
 		getInput:              dll.NewProc("RimeGetInput"),
 		getCommit:             dll.NewProc("RimeGetCommit"),
 		freeCommit:            dll.NewProc("RimeFreeCommit"),
@@ -764,6 +767,14 @@ func ChangePage(sessionId RimeSessionId, backward bool) bool {
 		backwardArg = 1
 	}
 	r1, _, _ := rimeProcs.changePage.Call(uintptr(sessionId), backwardArg)
+	return boolResult(r1)
+}
+
+func DeleteCandidateOnCurrentPage(sessionId RimeSessionId, index int) bool {
+	if sessionId == 0 || index < 0 || !procAvailable(rimeProcs.deleteCandidateOnCurrentPage) {
+		return false
+	}
+	r1, _, _ := rimeProcs.deleteCandidateOnCurrentPage.Call(uintptr(sessionId), uintptr(index))
 	return boolResult(r1)
 }
 

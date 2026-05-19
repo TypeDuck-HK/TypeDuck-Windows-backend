@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/gaboolic/moqi-ime/imecore"
 )
 
 const appearanceConfigFileName = "appearance_config.json"
@@ -543,6 +545,19 @@ func (ime *IME) syncAppearancePrefs() bool {
 	ime.applyAppearanceConfig(cfg)
 	ime.appearanceVersion = version
 	return true
+}
+
+func (ime *IME) sendAsyncAppearanceUpdate(notification *imecore.TrayNotification) {
+	if ime.asyncResponseSender == nil {
+		return
+	}
+	resp := imecore.NewResponse(0, true)
+	resp.CustomizeUI = ime.customizeUIMap()
+	ime.fillResponseFromCurrentState(resp)
+	if notification != nil {
+		resp.TrayNotification = notification
+	}
+	ime.asyncResponseSender(resp)
 }
 
 func normalizeColor(value string) string {
