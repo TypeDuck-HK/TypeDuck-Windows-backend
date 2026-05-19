@@ -250,6 +250,19 @@ func (s *Sync) DownloadClip(name string) (string, error) {
 	return client.DownloadClip(name)
 }
 
+func (s *Sync) DeleteClip(name string) error {
+	if !IsClipFileName(name) {
+		return fmt.Errorf("非法云剪贴板文件名")
+	}
+	s.mu.Lock()
+	client := s.client
+	s.mu.Unlock()
+	if client == nil {
+		return fmt.Errorf("云剪贴板未配置完整")
+	}
+	return client.DeleteClip(name)
+}
+
 // ClientOrError returns the WebDAV client when configured.
 func (s *Sync) ClientOrError() (*Client, error) {
 	s.mu.Lock()

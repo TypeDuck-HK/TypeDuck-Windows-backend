@@ -1713,6 +1713,15 @@ func (ime *IME) applyDeleteCandidate(req *imecore.Request, resp *imecore.Respons
 	if ime.aiActive {
 		return false
 	}
+	if ime.cloudClipboardActive {
+		absolute, ok := ime.cloudClipboardVisibleIndex(index)
+		if !ok {
+			return false
+		}
+		ime.cloudClipboardCursor = absolute
+		ime.deleteCurrentCloudClipboardEntry(resp)
+		return true
+	}
 	if _, customCandidates, backendIndexes, ok := ime.currentCustomPhraseOverlay(); ok {
 		if index < len(customCandidates) {
 			return false

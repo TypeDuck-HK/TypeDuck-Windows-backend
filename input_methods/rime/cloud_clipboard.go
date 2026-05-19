@@ -395,6 +395,10 @@ func (ime *IME) handleCloudClipboardKeyDown(req *imecore.Request, resp *imecore.
 			resp.ReturnValue = 1
 			return true
 		}
+	case vkDelete:
+		ime.deleteCurrentCloudClipboardEntry(resp)
+		resp.ReturnValue = 1
+		return true
 	case vkUp:
 		if ime.cloudClipboardCursor > 0 {
 			ime.cloudClipboardCursor--
@@ -440,6 +444,35 @@ func (ime *IME) changeCloudClipboardPage(backward bool, resp *imecore.Response) 
 	ime.fillCloudClipboardResponse(resp)
 }
 
+func (ime *IME) deleteCurrentCloudClipboardEntry(resp *imecore.Response) {
+	if resp == nil {
+		return
+	}
+	if ime.cloudClipboardCursor < 0 || ime.cloudClipboardCursor >= len(ime.cloudClipboardEntries) {
+		ime.fillCloudClipboardResponse(resp)
+		return
+	}
+	entry := ime.cloudClipboardEntries[ime.cloudClipboardCursor]
+	if err := globalCloudClipboardService().DeleteClip(entry.Name); err != nil {
+		ime.fillCloudClipboardResponse(resp)
+		resp.ShowMessage = &imecore.MessageWindow{Message: "删除失败: " + shortErrorMessage(err), Duration: 3000}
+		return
+	}
+	ime.cloudClipboardEntries = append(ime.cloudClipboardEntries[:ime.cloudClipboardCursor], ime.cloudClipboardEntries[ime.cloudClipboardCursor+1:]...)
+	if len(ime.cloudClipboardEntries) == 0 {
+		ime.resetCloudClipboardState()
+		ime.clearResponse(resp)
+		ime.keyComposing = false
+		resp.ShowMessage = &imecore.MessageWindow{Message: "云剪贴板已清空", Duration: 2500}
+		return
+	}
+	if ime.cloudClipboardCursor >= len(ime.cloudClipboardEntries) {
+		ime.cloudClipboardCursor = len(ime.cloudClipboardEntries) - 1
+	}
+	ime.cloudClipboardPage = ime.cloudClipboardCursor / cloudClipboardPageSize
+	ime.fillCloudClipboardResponse(resp)
+}
+
 func (ime *IME) handleCloudClipboardKeyUp(req *imecore.Request, resp *imecore.Response) bool {
 	if req == nil || !ime.cloudClipboardActive {
 		return false
@@ -475,7 +508,7 @@ func (ime *IME) isCloudClipboardHandledKey(req *imecore.Request) bool {
 	if req == nil || !ime.cloudClipboardActive {
 		return false
 	}
-	if req.KeyCode == vkEscape || req.KeyCode == vkReturn || req.KeyCode == vkSpace || req.KeyCode == vkUp || req.KeyCode == vkDown || isCloudClipboardPageKey(req) || isModifierKeyCode(req.KeyCode) {
+	if req.KeyCode == vkEscape || req.KeyCode == vkReturn || req.KeyCode == vkSpace || req.KeyCode == vkDelete || req.KeyCode == vkUp || req.KeyCode == vkDown || isCloudClipboardPageKey(req) || isModifierKeyCode(req.KeyCode) {
 		return true
 	}
 	if _, ok := ime.selectionKeyIndex(req); ok {

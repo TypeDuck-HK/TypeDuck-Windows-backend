@@ -123,6 +123,9 @@ func (c *Client) DownloadClip(name string) (string, error) {
 }
 
 func (c *Client) DeleteClip(name string) error {
+	if !IsClipFileName(name) {
+		return fmt.Errorf("invalid clip filename")
+	}
 	req, err := http.NewRequest(http.MethodDelete, c.fileURL(name), nil)
 	if err != nil {
 		return err
