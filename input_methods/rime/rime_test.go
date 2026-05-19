@@ -3442,7 +3442,7 @@ func TestHandleRequestSyncsAppearanceAcrossInstances(t *testing.T) {
 	first := newTestIME()
 	second := newTestIME()
 
-	if !first.applyAppearanceCommand(ID_APPEARANCE_THEME_PURPLE) {
+	if !first.applyAppearanceCommand(themeCommandForTheme(t, "purple")) {
 		t.Fatal("expected theme command handled")
 	}
 
@@ -3851,7 +3851,7 @@ func TestLoadAppearancePrefsKeepsPresetThemeAfterPersist(t *testing.T) {
 	resetSharedAppearanceConfigForTest()
 
 	first := newTestIME()
-	if !first.applyAppearanceCommand(ID_APPEARANCE_THEME_PURPLE) {
+	if !first.applyAppearanceCommand(themeCommandForTheme(t, "purple")) {
 		t.Fatal("expected theme command handled")
 	}
 

@@ -67,8 +67,11 @@ preset_color_schemes:
 	if cfg.CandidateSpacing == nil || *cfg.CandidateSpacing != 20 {
 		t.Fatalf("unexpected candidate spacing: %#v", cfg.CandidateSpacing)
 	}
-	if cfg.CandidateBackgroundColor == nil || *cfg.CandidateBackgroundColor != "#eceeee" {
-		t.Fatalf("unexpected background color: %#v", cfg.CandidateBackgroundColor)
+	if cfg.CandidateBackgroundColor == nil {
+		t.Fatalf("unexpected background color: nil")
+	}
+	if got := *cfg.CandidateBackgroundColor; got != "#eeeeec" {
+		t.Fatalf("unexpected background color: %q", got)
 	}
 	if cfg.CandidateHighlightColor == nil || *cfg.CandidateHighlightColor != "#0a3afa" {
 		t.Fatalf("unexpected highlight color (want aqua blue #0a3afa): %#v", cfg.CandidateHighlightColor)
@@ -119,8 +122,11 @@ func TestParseInstalledWeaselYAML(t *testing.T) {
 	if cfg.CandidateSpacing == nil || *cfg.CandidateSpacing != 5 {
 		t.Fatalf("expected candidate spacing 5, got %#v", cfg.CandidateSpacing)
 	}
-	if cfg.CandidateBackgroundColor == nil || *cfg.CandidateBackgroundColor != "#eceeee" {
-		t.Fatalf("unexpected aqua background: %#v", cfg.CandidateBackgroundColor)
+	if cfg.CandidateBackgroundColor == nil {
+		t.Fatalf("unexpected aqua background: nil")
+	}
+	if got := *cfg.CandidateBackgroundColor; got != "#eeeeec" {
+		t.Fatalf("unexpected aqua background: %q", got)
 	}
 	if cfg.CandidateHighlightColor == nil || *cfg.CandidateHighlightColor != "#0a3afa" {
 		t.Fatalf("unexpected aqua highlight (want blue #0a3afa): %#v", cfg.CandidateHighlightColor)

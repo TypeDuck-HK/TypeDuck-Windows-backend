@@ -61,10 +61,10 @@ func appearanceConfigEmpty(cfg appearanceConfig) bool {
 		cfg.CandidateCommentHighlightColor == nil
 }
 
-func parseWeaselAppearanceYAML(data []byte) (appearanceConfig, error) {
+func parseWeaselYAMLDocument(data []byte) (map[string]interface{}, map[string]interface{}, string, error) {
 	var root yaml.Node
 	if err := yaml.Unmarshal(data, &root); err != nil {
-		return appearanceConfig{}, fmt.Errorf("无法解析皮肤 YAML: %w", err)
+		return nil, nil, "", fmt.Errorf("无法解析皮肤 YAML: %w", err)
 	}
 	doc := unwrapYAMLDocument(root)
 	style := mergeYAMLMaps(
@@ -79,9 +79,23 @@ func parseWeaselAppearanceYAML(data []byte) (appearanceConfig, error) {
 	if schemeName == "" {
 		schemeName = stringValue(style["color_scheme_dark"])
 	}
+	if schemeName == "" && len(schemes) == 1 {
+		for name := range schemes {
+			schemeName = name
+			break
+		}
+	}
+	return style, schemes, schemeName, nil
+}
+
+func parseWeaselAppearanceYAML(data []byte) (appearanceConfig, error) {
+	style, schemes, activeSchemeID, err := parseWeaselYAMLDocument(data)
+	if err != nil {
+		return appearanceConfig{}, err
+	}
 	activeScheme := map[string]interface{}{}
-	if schemeName != "" {
-		if scheme, ok := schemes[schemeName].(map[string]interface{}); ok {
+	if activeSchemeID != "" {
+		if scheme, ok := schemes[activeSchemeID].(map[string]interface{}); ok {
 			activeScheme = scheme
 		}
 	}
@@ -94,6 +108,56 @@ func parseWeaselAppearanceYAML(data []byte) (appearanceConfig, error) {
 		}
 	}
 	return weaselStyleToAppearanceConfig(style, activeScheme)
+}
+
+func parseWeaselSkinFile(path string) (string, []ThemeDefinition, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", nil, err
+	}
+	return parseWeaselSkinFromBytes(data)
+}
+
+func parseWeaselSkinFromBytes(data []byte) (string, []ThemeDefinition, error) {
+	style, schemes, activeSchemeID, err := parseWeaselYAMLDocument(data)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(schemes) == 0 {
+		return "", nil, fmt.Errorf("皮肤 YAML 中没有 preset_color_schemes")
+	}
+	themes := make([]ThemeDefinition, 0, len(schemes))
+	for schemeName, value := range schemes {
+		scheme, ok := value.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		cfg, err := weaselStyleToAppearanceConfig(style, scheme)
+		if err != nil {
+			continue
+		}
+		id := normalizeThemeID(schemeName)
+		cfg.CandidateTheme = &id
+		label := firstString(scheme, "name")
+		if label == "" {
+			label = schemeName
+		}
+		themes = append(themes, ThemeDefinition{
+			ID:         id,
+			Label:      label,
+			Source:     "imported",
+			Appearance: cfg,
+		})
+	}
+	if len(themes) == 0 {
+		return "", nil, fmt.Errorf("皮肤文件中没有可导入的配色方案")
+	}
+	if activeSchemeID == "" {
+		activeSchemeID = themes[0].ID
+	} else {
+		activeSchemeID = normalizeThemeID(activeSchemeID)
+	}
+	return activeSchemeID, themes, nil
 }
 
 type weaselColorFormat string
@@ -404,12 +468,12 @@ func weaselIntColorToHex(value int64, format weaselColorFormat) string {
 	if value < 0 {
 		value &= 0xffffffff
 	}
-	if value == 0 {
-		return ""
-	}
 	// 全透明色（阴影等）跳过
 	if value&0xffffff == 0 && value > 0xffffff {
 		return ""
+	}
+	if value == 0 {
+		return "#000000"
 	}
 
 	var r, g, b int
@@ -432,6 +496,21 @@ func weaselIntColorToHex(value int64, format weaselColorFormat) string {
 }
 
 func (ime *IME) importAppearanceSkinFromFile(path string) error {
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext == ".yaml" || ext == ".yml" {
+		activeSchemeID, themes, err := parseWeaselSkinFile(path)
+		if err != nil {
+			return err
+		}
+		if err := upsertImportedThemes(themes, path); err != nil {
+			return err
+		}
+		if !ime.applyThemeByID(activeSchemeID) {
+			return fmt.Errorf("无法应用配色方案 %q", activeSchemeID)
+		}
+		return nil
+	}
+
 	cfg, err := parseAppearanceSkinFile(path)
 	if err != nil {
 		return err

@@ -71,20 +71,7 @@ const (
 	ID_APPEARANCE_HLTEXT_BLACK                 = 145
 	ID_APPEARANCE_HLTEXT_WHITE                 = 146
 	ID_APPEARANCE_HLTEXT_BLUE                  = 147
-	ID_APPEARANCE_THEME_DEFAULT                = 150
-	ID_APPEARANCE_THEME_2                      = 151
-	ID_APPEARANCE_THEME_MOQI                   = 152
-	ID_APPEARANCE_THEME_PURPLE                 = 153
-	ID_APPEARANCE_THEME_WALLGRAY               = 154
-	ID_APPEARANCE_THEME_ORANGE                 = 155
-	ID_APPEARANCE_THEME_REDPLUM                = 156
-	ID_APPEARANCE_THEME_SHACHENG               = 157
-	ID_APPEARANCE_THEME_GLOBE                  = 158
-	ID_APPEARANCE_THEME_SOYMILK                = 159
-	ID_APPEARANCE_THEME_CHRYSANTHEMUM          = 160
-	ID_APPEARANCE_THEME_QINHUANGDAO            = 161
-	ID_APPEARANCE_THEME_BUBBLEGUM              = 162
-	ID_APPEARANCE_THEME_PEPSI                  = 163
+	ID_APPEARANCE_THEME_BASE                   = 4000
 	ID_APPEARANCE_FONT_FAMILY_SEGOE_UI         = 194
 	ID_APPEARANCE_FONT_FAMILY_YAHEI_UI         = 195
 	ID_APPEARANCE_FONT_FAMILY_DENGXIAN         = 196
@@ -2336,6 +2323,12 @@ func (ime *IME) isKnownDynamicCommand(commandID int) bool {
 			}
 		}
 	}
+	if index, ok := themeCommandIndex(commandID); ok {
+		themes := listThemes()
+		if index >= 0 && index < len(themes) {
+			return true
+		}
+	}
 	return false
 }
 
@@ -3100,22 +3093,7 @@ func (ime *IME) buildMenu() []map[string]interface{} {
 	items = append(items,
 		map[string]interface{}{"id": ID_SHARED_INPUT_STATE, "text": "输入状态共享", "checked": ime.inputStateShared},
 		map[string]interface{}{"text": "外观(&A)", "submenu": []map[string]interface{}{
-			{"text": "切换主题", "submenu": []map[string]interface{}{
-				{"id": ID_APPEARANCE_THEME_DEFAULT, "text": "默认主题", "checked": ime.style.CandidateTheme == "default"},
-				{"id": ID_APPEARANCE_THEME_2, "text": "橘白", "checked": ime.style.CandidateTheme == "theme2"},
-				{"id": ID_APPEARANCE_THEME_MOQI, "text": "墨奇", "checked": ime.style.CandidateTheme == "moqi"},
-				{"id": ID_APPEARANCE_THEME_PURPLE, "text": "很有韵味", "checked": ime.style.CandidateTheme == "purple"},
-				{"id": ID_APPEARANCE_THEME_WALLGRAY, "text": "墙灰", "checked": ime.style.CandidateTheme == "wallgray"},
-				{"id": ID_APPEARANCE_THEME_ORANGE, "text": "橙狗", "checked": ime.style.CandidateTheme == "orange"},
-				{"id": ID_APPEARANCE_THEME_REDPLUM, "text": "老红梅", "checked": ime.style.CandidateTheme == "redplum"},
-				{"id": ID_APPEARANCE_THEME_SHACHENG, "text": "沙城老窖", "checked": ime.style.CandidateTheme == "shacheng"},
-				{"id": ID_APPEARANCE_THEME_GLOBE, "text": "地球仪", "checked": ime.style.CandidateTheme == "globe"},
-				{"id": ID_APPEARANCE_THEME_SOYMILK, "text": "豆浆杯", "checked": ime.style.CandidateTheme == "soymilk"},
-				{"id": ID_APPEARANCE_THEME_CHRYSANTHEMUM, "text": "菊花茶", "checked": ime.style.CandidateTheme == "chrysanthemum"},
-				{"id": ID_APPEARANCE_THEME_QINHUANGDAO, "text": "秦皇岛", "checked": ime.style.CandidateTheme == "qinhuangdao"},
-				{"id": ID_APPEARANCE_THEME_BUBBLEGUM, "text": "歪比巴卜", "checked": ime.style.CandidateTheme == "bubblegum"},
-				{"id": ID_APPEARANCE_THEME_PEPSI, "text": "百事可乐", "checked": ime.style.CandidateTheme == "pepsi"},
-			}},
+			{"text": "切换主题", "submenu": ime.themeMenuItems()},
 			{"id": ID_APPEARANCE_INLINE_PREEDIT, "text": "行内预编辑", "checked": ime.inlinePreeditEnabled()},
 			{"text": "候选排列", "submenu": []map[string]interface{}{
 				{"id": ID_APPEARANCE_LAYOUT_VERTICAL, "text": "竖排", "checked": !ime.isHorizontalCandidateLayout()},
