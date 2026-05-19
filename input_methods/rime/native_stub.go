@@ -71,8 +71,9 @@ func (b *nativeBackend) SelectSchema(schemaID string) bool      { return false }
 func (b *nativeBackend) SetCandidatePageSize(pageSize int) bool { return false }
 func (b *nativeBackend) SelectCandidate(index int) bool         { return false }
 func (b *nativeBackend) HighlightCandidate(index int) bool      { return false }
-func (b *nativeBackend) ChangePage(backward bool) bool          { return false }
-func (b *nativeBackend) Available() bool                        { return false }
+func (b *nativeBackend) ChangePage(backward bool) bool                  { return false }
+func (b *nativeBackend) DeleteCandidateOnCurrentPage(index int) bool      { return false }
+func (b *nativeBackend) Available() bool                                { return false }
 
 func (b *nativeBackend) Redeploy(sharedDir, userDir string) bool { return false }
 

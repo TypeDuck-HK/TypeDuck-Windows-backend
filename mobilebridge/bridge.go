@@ -173,6 +173,10 @@ func (s *Session) ChangePage(backward bool) *MobileResponse {
 	return s.handle("changePage", 0, 0, -1, backward, 0)
 }
 
+func (s *Session) DeleteCandidateOnCurrentPage(index int) *MobileResponse {
+	return s.handle("deleteCandidateOnCurrentPage", 0, 0, index, false, 0)
+}
+
 func (s *Session) Command(commandID int) *MobileResponse {
 	return s.handle("onCommand", 0, 0, -1, false, commandID)
 }

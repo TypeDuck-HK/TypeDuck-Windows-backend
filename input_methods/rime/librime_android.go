@@ -169,6 +169,11 @@ static Bool moqi_rime_change_page(RimeSessionId session_id, Bool backward) {
 	return (api && api->change_page) ? api->change_page(session_id, backward) : False;
 }
 
+static Bool moqi_rime_delete_candidate_on_current_page(RimeSessionId session_id, size_t index) {
+	RimeApi* api = moqi_rime_api();
+	return (api && api->delete_candidate_on_current_page) ? api->delete_candidate_on_current_page(session_id, index) : False;
+}
+
 static Bool moqi_rime_deploy_config_file(const char* file_name, const char* version_key) {
 	RimeApi* api = moqi_rime_api();
 	return (api && api->deploy_config_file) ? api->deploy_config_file(file_name, version_key) : False;
@@ -726,6 +731,13 @@ func ChangePage(sessionId RimeSessionId, backward bool) bool {
 		return false
 	}
 	return boolResult(C.moqi_rime_change_page(C.RimeSessionId(sessionId), cBool(backward)))
+}
+
+func DeleteCandidateOnCurrentPage(sessionId RimeSessionId, index int) bool {
+	if sessionId == 0 || index < 0 {
+		return false
+	}
+	return boolResult(C.moqi_rime_delete_candidate_on_current_page(C.RimeSessionId(sessionId), C.size_t(index)))
 }
 
 func DeployConfigFile(filePath, key string) bool {

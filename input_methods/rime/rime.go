@@ -188,6 +188,7 @@ type rimeBackend interface {
 	SelectCandidate(index int) bool
 	HighlightCandidate(index int) bool
 	ChangePage(backward bool) bool
+	DeleteCandidateOnCurrentPage(index int) bool
 }
 
 type IME struct {
@@ -368,6 +369,8 @@ func (ime *IME) HandleRequest(req *imecore.Request) *imecore.Response {
 		return ime.selectCandidate(req, resp)
 	case "changePage":
 		return ime.changePage(req, resp)
+	case "deleteCandidateOnCurrentPage":
+		return ime.deleteCandidateOnCurrentPage(req, resp)
 	default:
 		resp.ReturnValue = 0
 		return resp
@@ -560,6 +563,11 @@ func (ime *IME) selectCandidate(req *imecore.Request, resp *imecore.Response) *i
 
 func (ime *IME) changePage(req *imecore.Request, resp *imecore.Response) *imecore.Response {
 	resp.ReturnValue = boolToInt(ime.applyCandidatePageChange(req, resp))
+	return resp
+}
+
+func (ime *IME) deleteCandidateOnCurrentPage(req *imecore.Request, resp *imecore.Response) *imecore.Response {
+	resp.ReturnValue = boolToInt(ime.applyDeleteCandidate(req, resp))
 	return resp
 }
 
@@ -1641,6 +1649,41 @@ func (ime *IME) selectBackendCandidate(resp *imecore.Response, backendIndex int)
 		return false
 	}
 	resp.ReturnValue = boolToInt(ime.onKey(&imecore.Request{}, resp))
+	return true
+}
+
+func (ime *IME) applyDeleteCandidate(req *imecore.Request, resp *imecore.Response) bool {
+	if req == nil || resp == nil || !req.HasCandidateIndex || req.CandidateIndex < 0 {
+		return false
+	}
+	index := req.CandidateIndex
+	if ime.aiActive {
+		return false
+	}
+	if _, customCandidates, backendIndexes, ok := ime.currentCustomPhraseOverlay(); ok {
+		if index < len(customCandidates) {
+			return false
+		}
+		backendListIndex := index - len(customCandidates)
+		if backendListIndex < 0 || backendListIndex >= len(backendIndexes) {
+			return false
+		}
+		return ime.deleteBackendCandidate(resp, backendIndexes[backendListIndex])
+	}
+	return ime.deleteBackendCandidate(resp, index)
+}
+
+func (ime *IME) deleteBackendCandidate(resp *imecore.Response, backendIndex int) bool {
+	if resp == nil || backendIndex < 0 || backendIndex >= 9 {
+		return false
+	}
+	if ime.backend == nil || !ime.backendReady() {
+		return false
+	}
+	if !ime.backend.DeleteCandidateOnCurrentPage(backendIndex) {
+		return false
+	}
+	ime.fillResponseFromCurrentState(resp)
 	return true
 }
 

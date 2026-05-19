@@ -404,6 +404,10 @@ func (b *testBackend) HighlightCandidate(index int) bool {
 	return true
 }
 
+func (b *testBackend) DeleteCandidateOnCurrentPage(index int) bool {
+	return false
+}
+
 func (b *testBackend) ChangePage(backward bool) bool {
 	if backward {
 		if b.pageNo == 0 {

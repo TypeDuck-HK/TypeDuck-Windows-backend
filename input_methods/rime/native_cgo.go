@@ -380,3 +380,14 @@ func (b *nativeBackend) ChangePage(backward bool) bool {
 	}
 	return ChangePage(b.sessionID, backward)
 }
+
+func (b *nativeBackend) DeleteCandidateOnCurrentPage(index int) bool {
+	if !rimeRuntime.tryBeginOperation() {
+		return false
+	}
+	defer rimeRuntime.endOperation()
+	if !b.ensureSessionLocked() {
+		return false
+	}
+	return DeleteCandidateOnCurrentPage(b.sessionID, index)
+}
