@@ -3,6 +3,8 @@ package cloudclipboard
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -24,6 +26,11 @@ type DisplayItem struct {
 	LastModified int64
 	Preview      string
 	FullText     string
+}
+
+type UserDictSnapshotSyncResult struct {
+	Downloaded int
+	Uploaded   int
 }
 
 type Sync struct {
@@ -263,6 +270,82 @@ func (s *Sync) DeleteClip(name string) error {
 	return client.DeleteClip(name)
 }
 
+func (s *Sync) DownloadUserDictSnapshots(localSyncRoot, schemeSet string) (int, error) {
+	s.mu.Lock()
+	client := s.client
+	s.mu.Unlock()
+	if client == nil {
+		return 0, fmt.Errorf("WebDAV 未配置完整")
+	}
+	if localSyncRoot == "" {
+		return 0, fmt.Errorf("本地同步目录为空")
+	}
+	if !IsSchemeSetDirName(schemeSet) {
+		return 0, fmt.Errorf("方案集名称无效")
+	}
+	entries, err := client.ListUserDictSnapshots(schemeSet)
+	if err != nil {
+		return 0, err
+	}
+	downloaded := 0
+	for _, entry := range entries {
+		if !IsSchemeSetDirName(entry.SchemeSet) || !IsSyncDeviceDirName(entry.DeviceID) || !IsUserDictSnapshotFileName(entry.Name) {
+			continue
+		}
+		data, err := client.DownloadUserDictSnapshot(entry)
+		if err != nil {
+			return downloaded, err
+		}
+		target := filepath.Join(localSyncRoot, entry.DeviceID, entry.Name)
+		if err := atomicWriteFile(target, data, 0o644); err != nil {
+			return downloaded, err
+		}
+		downloaded++
+	}
+	return downloaded, nil
+}
+
+func (s *Sync) UploadUserDictSnapshots(localSyncRoot, schemeSet, deviceID string) (int, error) {
+	s.mu.Lock()
+	client := s.client
+	s.mu.Unlock()
+	if client == nil {
+		return 0, fmt.Errorf("WebDAV 未配置完整")
+	}
+	if localSyncRoot == "" {
+		return 0, fmt.Errorf("本地同步目录为空")
+	}
+	if !IsSchemeSetDirName(schemeSet) {
+		return 0, fmt.Errorf("方案集名称无效")
+	}
+	if !IsSyncDeviceDirName(deviceID) {
+		return 0, fmt.Errorf("本机同步 ID 无效")
+	}
+	deviceDir := filepath.Join(localSyncRoot, deviceID)
+	entries, err := os.ReadDir(deviceDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	uploaded := 0
+	for _, entry := range entries {
+		if entry.IsDir() || !IsUserDictSnapshotFileName(entry.Name()) {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(deviceDir, entry.Name()))
+		if err != nil {
+			return uploaded, err
+		}
+		if err := client.UploadUserDictSnapshot(schemeSet, deviceID, entry.Name(), data); err != nil {
+			return uploaded, err
+		}
+		uploaded++
+	}
+	return uploaded, nil
+}
+
 // ClientOrError returns the WebDAV client when configured.
 func (s *Sync) ClientOrError() (*Client, error) {
 	s.mu.Lock()
@@ -274,4 +357,16 @@ func (s *Sync) ClientOrError() (*Client, error) {
 		return nil, fmt.Errorf("云剪贴板未配置完整")
 	}
 	return s.client, nil
+}
+
+func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, perm); err != nil {
+		return err
+	}
+	_ = os.Remove(path)
+	return os.Rename(tmp, path)
 }

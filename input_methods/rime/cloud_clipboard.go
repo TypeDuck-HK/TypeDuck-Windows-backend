@@ -39,11 +39,13 @@ func cloudClipboardTrayNotification(message string, icon imecore.TrayNotificatio
 func (ime *IME) cloudClipboardMenuSection() map[string]interface{} {
 	cfg := loadCloudClipboardConfig()
 	return map[string]interface{}{
-		"text": "云剪贴板",
+		"text": "同步设置",
 		"submenu": []map[string]interface{}{
+			{"id": ID_WEBDAV_SETTINGS, "text": "WebDAV 配置..."},
+			{"id": ID_CLOUD_CLIPBOARD_TEST, "text": "测试 WebDAV"},
 			{"id": ID_CLOUD_CLIPBOARD_ENABLED, "text": "启用云剪贴板", "checked": cfg.Enabled},
-			{"id": ID_CLOUD_CLIPBOARD_SETTINGS, "text": "云剪贴板设置…"},
-			{"id": ID_CLOUD_CLIPBOARD_TEST, "text": "测试 WebDAV 连接"},
+			{"id": ID_CLOUD_CLIPBOARD_SETTINGS, "text": "云剪贴板设置..."},
+			{"id": ID_SYNC, "text": "同步用户词库"},
 		},
 	}
 }
@@ -65,8 +67,7 @@ func (ime *IME) onCloudClipboardUpload(req *imecore.Request, resp *imecore.Respo
 func (ime *IME) openCloudClipboardSettingsAsync(resp *imecore.Response) bool {
 	go func() {
 		current := loadCloudClipboardConfig()
-		hasPassword := readCloudClipboardPassword() != ""
-		result, err := promptCloudClipboardSettings(context.Background(), current, hasPassword)
+		result, err := promptCloudClipboardSettings(context.Background(), current)
 		var tray *imecore.TrayNotification
 		if err != nil {
 			if err.Error() == "已取消" {
@@ -75,18 +76,41 @@ func (ime *IME) openCloudClipboardSettingsAsync(resp *imecore.Response) bool {
 			tray = cloudClipboardTrayNotification("打开设置失败: "+shortErrorMessage(err), imecore.TrayNotificationIconError)
 		} else {
 			cfg := dialogResultToConfig(result, current)
+			if err := saveCloudClipboardConfig(cfg, "", true); err != nil {
+				tray = cloudClipboardTrayNotification("保存失败: "+shortErrorMessage(err), imecore.TrayNotificationIconError)
+			} else {
+				tray = cloudClipboardTrayNotification("云剪贴板设置已保存", imecore.TrayNotificationIconInfo)
+			}
+		}
+		if tray != nil {
+			ime.sendAsyncTrayNotification(tray)
+		}
+	}()
+	if resp != nil {
+		resp.ReturnValue = 1
+	}
+	return true
+}
+
+func (ime *IME) openWebDAVSettingsAsync(resp *imecore.Response) bool {
+	go func() {
+		current := loadCloudClipboardConfig()
+		hasPassword := readCloudClipboardPassword() != ""
+		result, err := promptWebDAVSettings(context.Background(), current, hasPassword)
+		var tray *imecore.TrayNotification
+		if err != nil {
+			if err.Error() == "已取消" {
+				return
+			}
+			tray = cloudClipboardTrayNotification("打开 WebDAV 配置失败: "+shortErrorMessage(err), imecore.TrayNotificationIconError)
+		} else {
+			cfg := webDAVDialogResultToConfig(result, current)
 			keepPassword := result.KeepPassword && result.Password == ""
 			newPassword := result.Password
 			if err := saveCloudClipboardConfig(cfg, newPassword, keepPassword); err != nil {
 				tray = cloudClipboardTrayNotification("保存失败: "+shortErrorMessage(err), imecore.TrayNotificationIconError)
-			} else if result.TestOnly {
-				if err := testCloudClipboardConnection(cfg); err != nil {
-					tray = cloudClipboardTrayNotification("连接失败: "+shortErrorMessage(err), imecore.TrayNotificationIconError)
-				} else {
-					tray = cloudClipboardTrayNotification("WebDAV 连接成功", imecore.TrayNotificationIconInfo)
-				}
 			} else {
-				tray = cloudClipboardTrayNotification("设置已保存", imecore.TrayNotificationIconInfo)
+				tray = cloudClipboardTrayNotification("WebDAV 配置已保存", imecore.TrayNotificationIconInfo)
 			}
 		}
 		if tray != nil {

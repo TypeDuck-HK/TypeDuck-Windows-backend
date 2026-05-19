@@ -144,10 +144,12 @@ func (b *nativeBackend) SyncUserData() bool {
 		return false
 	}
 	defer rimeRuntime.endOperation()
+	b.DestroySession()
 	if !SyncUserData() {
 		log.Println("RIME 同步用户数据失败")
 		return false
 	}
+	JoinMaintenanceThread()
 	return true
 }
 

@@ -17,6 +17,7 @@ const (
 	ID_CLOUD_CLIPBOARD_SETTINGS = 5001
 	ID_CLOUD_CLIPBOARD_ENABLED  = 5002
 	ID_CLOUD_CLIPBOARD_TEST     = 5003
+	ID_WEBDAV_SETTINGS          = 5004
 )
 
 type cloudClipboardFileConfig struct {

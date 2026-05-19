@@ -896,7 +896,7 @@ func (ime *IME) onCommand(req *imecore.Request, resp *imecore.Response) *imecore
 			return resp
 		}
 	case ID_SYNC:
-		if ime.backend == nil || !ime.backend.SyncUserData() {
+		if !ime.syncUserDataCommand(resp) {
 			resp.ReturnValue = 0
 			return resp
 		}
@@ -948,6 +948,11 @@ func (ime *IME) onCommand(req *imecore.Request, resp *imecore.Response) *imecore
 		ime.openURL(helpDocsURL)
 	case ID_DISCUSSIONS:
 		ime.openURL(discussionURL)
+	case ID_WEBDAV_SETTINGS:
+		if !ime.openWebDAVSettingsAsync(resp) {
+			resp.ReturnValue = 0
+			return resp
+		}
 	case ID_CLOUD_CLIPBOARD_SETTINGS:
 		if !ime.openCloudClipboardSettingsAsync(resp) {
 			resp.ReturnValue = 0

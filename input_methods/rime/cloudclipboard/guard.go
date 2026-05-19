@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"strings"
+	"unicode"
 )
 
 const (
@@ -93,6 +94,42 @@ func IsClipFileName(name string) bool {
 		return true
 	}
 	return strings.HasPrefix(strings.ToLower(name), "clip_")
+}
+
+func IsUserDictSnapshotFileName(name string) bool {
+	if !strings.HasSuffix(strings.ToLower(name), ".userdb.txt") {
+		return false
+	}
+	if strings.ContainsAny(name, `/\:`) {
+		return false
+	}
+	base := strings.TrimSuffix(name, ".userdb.txt")
+	return base != "" && base != "." && base != ".."
+}
+
+func IsSyncDeviceDirName(name string) bool {
+	if name == "" || name == "." || name == ".." || len(name) > 128 {
+		return false
+	}
+	for _, r := range name {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' || r == '.' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func IsSchemeSetDirName(name string) bool {
+	if name == "" || name == "." || name == ".." || len([]rune(name)) > 128 {
+		return false
+	}
+	for _, r := range name {
+		if r < 0x20 || r == '/' || r == '\\' || r == ':' {
+			return false
+		}
+	}
+	return true
 }
 
 func isHexLower(s string) bool {

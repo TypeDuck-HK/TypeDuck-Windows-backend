@@ -24,6 +24,13 @@ type ClipEntry struct {
 	LastModified int64
 }
 
+type UserDictSnapshotEntry struct {
+	SchemeSet    string
+	DeviceID     string
+	Name         string
+	LastModified int64
+}
+
 type Client struct {
 	cfg    Config
 	client *http.Client
@@ -142,6 +149,110 @@ func (c *Client) DeleteClip(name string) error {
 	return nil
 }
 
+func (c *Client) ListUserDictSnapshots(schemeSet string) ([]UserDictSnapshotEntry, error) {
+	if !IsSchemeSetDirName(schemeSet) {
+		return nil, fmt.Errorf("invalid scheme set name")
+	}
+	if err := c.ensureRemoteSchemeSetDictDirectory(schemeSet); err != nil {
+		return nil, err
+	}
+	resp, err := c.propfind(c.dictSchemeSetDirectoryURL(schemeSet), 1)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("PROPFIND dict failed: HTTP %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	deviceEntries := parsePropfind(string(body))
+	seenDevices := map[string]bool{}
+	var snapshots []UserDictSnapshotEntry
+	for _, device := range deviceEntries {
+		if !IsSyncDeviceDirName(device.Name) || seenDevices[device.Name] {
+			continue
+		}
+		seenDevices[device.Name] = true
+		deviceURL := c.dictDeviceDirectoryURL(schemeSet, device.Name)
+		deviceResp, err := c.propfind(deviceURL, 1)
+		if err != nil {
+			continue
+		}
+		deviceBody, readErr := io.ReadAll(deviceResp.Body)
+		deviceResp.Body.Close()
+		if readErr != nil || deviceResp.StatusCode < 200 || deviceResp.StatusCode > 299 {
+			continue
+		}
+		seenFiles := map[string]bool{}
+		for _, entry := range parsePropfind(string(deviceBody)) {
+			if !IsUserDictSnapshotFileName(entry.Name) || seenFiles[entry.Name] {
+				continue
+			}
+			seenFiles[entry.Name] = true
+			snapshots = append(snapshots, UserDictSnapshotEntry{
+				SchemeSet:    schemeSet,
+				DeviceID:     device.Name,
+				Name:         entry.Name,
+				LastModified: entry.LastModified,
+			})
+		}
+	}
+	return snapshots, nil
+}
+
+func (c *Client) DownloadUserDictSnapshot(entry UserDictSnapshotEntry) ([]byte, error) {
+	if !IsSchemeSetDirName(entry.SchemeSet) || !IsSyncDeviceDirName(entry.DeviceID) || !IsUserDictSnapshotFileName(entry.Name) {
+		return nil, fmt.Errorf("invalid user dict snapshot path")
+	}
+	req, err := http.NewRequest(http.MethodGet, c.dictSnapshotURL(entry.SchemeSet, entry.DeviceID, entry.Name), nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setAuth(req)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("GET user dict snapshot failed: HTTP %d", resp.StatusCode)
+	}
+	return io.ReadAll(resp.Body)
+}
+
+func (c *Client) UploadUserDictSnapshot(schemeSet, deviceID, name string, data []byte) error {
+	if !IsSchemeSetDirName(schemeSet) || !IsSyncDeviceDirName(deviceID) || !IsUserDictSnapshotFileName(name) {
+		return fmt.Errorf("invalid user dict snapshot path")
+	}
+	if err := c.ensureRemoteSchemeSetDictDirectory(schemeSet); err != nil {
+		return err
+	}
+	deviceURL := c.dictDeviceDirectoryURL(schemeSet, deviceID)
+	if !c.directoryExists(deviceURL) {
+		if err := c.mkcol(deviceURL); err != nil {
+			return fmt.Errorf("创建词库同步设备目录失败: %w", err)
+		}
+	}
+	req, err := http.NewRequest(http.MethodPut, c.dictSnapshotURL(schemeSet, deviceID, name), bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "text/plain; charset=utf-8")
+	c.setAuth(req)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return fmt.Errorf("PUT user dict snapshot failed: HTTP %d", resp.StatusCode)
+	}
+	return nil
+}
+
 func (c *Client) ensureRemoteDirectory() error {
 	rootURL := strings.TrimRight(c.cfg.BaseURL, "/") + "/"
 	resp, err := c.propfind(rootURL, 0)
@@ -175,6 +286,64 @@ func (c *Client) ensureRemoteDirectory() error {
 		return nil
 	}
 	return fmt.Errorf("剪贴板目录 %s 无法创建。请在 %s 下手动新建 clip 文件夹", ClipDir, c.cfg.SettingsRoot)
+}
+
+func (c *Client) ensureRemoteDictDirectory() error {
+	if err := c.ensureSettingsRoot(); err != nil {
+		return err
+	}
+	dictURL := strings.TrimRight(c.cfg.DictDirectoryURL(), "/") + "/"
+	if c.directoryExists(dictURL) {
+		return nil
+	}
+	if err := c.mkcol(dictURL); err == nil && c.directoryExists(dictURL) {
+		return nil
+	}
+	return fmt.Errorf("词库同步目录 %s 无法创建。请在 %s 下手动新建 dict 文件夹", DictDir, c.cfg.SettingsRoot)
+}
+
+func (c *Client) ensureRemoteSchemeSetDictDirectory(schemeSet string) error {
+	if !IsSchemeSetDirName(schemeSet) {
+		return fmt.Errorf("invalid scheme set name")
+	}
+	if err := c.ensureRemoteDictDirectory(); err != nil {
+		return err
+	}
+	schemeSetURL := c.dictSchemeSetDirectoryURL(schemeSet)
+	if c.directoryExists(schemeSetURL) {
+		return nil
+	}
+	if err := c.mkcol(schemeSetURL); err == nil && c.directoryExists(schemeSetURL) {
+		return nil
+	}
+	return fmt.Errorf("词库同步方案集目录 %s 无法创建。请在 %s/%s 下手动新建 %s 文件夹", schemeSet, c.cfg.SettingsRoot, DictDir, schemeSet)
+}
+
+func (c *Client) ensureSettingsRoot() error {
+	rootURL := strings.TrimRight(c.cfg.BaseURL, "/") + "/"
+	resp, err := c.propfind(rootURL, 0)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	switch resp.StatusCode {
+	case 401:
+		return fmt.Errorf("认证失败：请检查用户名和密码。飞牛须使用「可见文件夹范围」所属账号登录")
+	case 200, 201, 204, 207:
+	default:
+		return fmt.Errorf("无法访问 WebDAV 根路径 HTTP %d。飞牛地址请填 http://192.168.x.x:5005/（注意末尾 /）", resp.StatusCode)
+	}
+
+	settingsRoot := c.cfg.SettingsRootURL()
+	if !c.directoryExists(settingsRoot) {
+		if err := c.mkcol(settingsRoot); err != nil {
+			return fmt.Errorf("设置目录 %s 不存在且无法自动创建：%w", c.cfg.SettingsRoot, err)
+		}
+		if !c.directoryExists(settingsRoot) {
+			return fmt.Errorf("设置目录 %s 不存在且无法自动创建。请在 NAS 文件管理中手动新建，或把设置目录改为 /", c.cfg.SettingsRoot)
+		}
+	}
+	return nil
 }
 
 func (c *Client) directoryExists(dirURL string) bool {
@@ -218,6 +387,20 @@ func (c *Client) fileURL(filename string) string {
 	dir := strings.TrimRight(c.cfg.ClipDirectoryURL(), "/")
 	safeName := strings.TrimPrefix(filename, "/")
 	return dir + "/" + safeName
+}
+
+func (c *Client) dictSchemeSetDirectoryURL(schemeSet string) string {
+	dir := strings.TrimRight(c.cfg.DictDirectoryURL(), "/")
+	return dir + "/" + url.PathEscape(strings.Trim(schemeSet, "/")) + "/"
+}
+
+func (c *Client) dictDeviceDirectoryURL(schemeSet, deviceID string) string {
+	dir := strings.TrimRight(c.dictSchemeSetDirectoryURL(schemeSet), "/")
+	return dir + "/" + url.PathEscape(strings.Trim(deviceID, "/")) + "/"
+}
+
+func (c *Client) dictSnapshotURL(schemeSet, deviceID, name string) string {
+	return strings.TrimRight(c.dictDeviceDirectoryURL(schemeSet, deviceID), "/") + "/" + url.PathEscape(strings.TrimPrefix(name, "/"))
 }
 
 func (c *Client) setAuth(req *http.Request) {

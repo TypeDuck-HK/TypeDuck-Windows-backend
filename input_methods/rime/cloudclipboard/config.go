@@ -3,13 +3,13 @@ package cloudclipboard
 import "strings"
 
 type Config struct {
-	Enabled         bool
-	BaseURL         string
-	Username        string
-	Password        string
-	SettingsRoot    string
-	MinIntervalSec  int
-	ListHotkey      string
+	Enabled        bool
+	BaseURL        string
+	Username       string
+	Password       string
+	SettingsRoot   string
+	MinIntervalSec int
+	ListHotkey     string
 }
 
 func (c Config) MinIntervalMs() int64 {
@@ -34,6 +34,12 @@ func (c Config) ClipDirectoryURL() string {
 	base := strings.TrimRight(c.BaseURL, "/")
 	clipPath := strings.TrimPrefix(ClipPathUnder(c.SettingsRoot), "/")
 	return base + "/" + clipPath
+}
+
+func (c Config) DictDirectoryURL() string {
+	base := strings.TrimRight(c.BaseURL, "/")
+	dictPath := strings.TrimPrefix(DictPathUnder(c.SettingsRoot), "/")
+	return base + "/" + dictPath
 }
 
 func NormalizeBaseURL(raw string) string {
