@@ -1603,7 +1603,7 @@ func (ime *IME) fillAIResponse(resp *imecore.Response) {
 		ime.fillResponseFromBackendState(resp, false)
 		return
 	}
-	cursor := state.CursorPos
+	cursor := compositionCaretRuneIndex(state.Composition, state.CursorPos)
 	resp.CompositionString = state.Composition
 	resp.CursorPos = cursor
 	resp.CompositionCursor = cursor
@@ -2174,6 +2174,24 @@ func (ime *IME) reloadAIConfig() error {
 	return nil
 }
 
+// compositionCaretRuneIndex converts librime's UTF-8 byte caret offset in the
+// preedit string to a Unicode code point index for TSF/UI consumers.
+func compositionCaretRuneIndex(composition string, caretBytePos int) int {
+	if caretBytePos <= 0 {
+		return 0
+	}
+	if composition == "" {
+		return 0
+	}
+	if caretBytePos >= len(composition) {
+		return utf8.RuneCountInString(composition)
+	}
+	if !utf8.ValidString(composition[:caretBytePos]) {
+		return utf8.RuneCountInString(composition)
+	}
+	return utf8.RuneCountInString(composition[:caretBytePos])
+}
+
 func (ime *IME) clearResponse(resp *imecore.Response) {
 	if resp == nil {
 		return
@@ -2222,8 +2240,9 @@ func (ime *IME) fillResponseFromBackendState(resp *imecore.Response, allowCommit
 		return true
 	}
 	resp.CompositionString = state.Composition
-	resp.CursorPos = state.CursorPos
-	resp.CompositionCursor = state.CursorPos
+	caretIndex := compositionCaretRuneIndex(state.Composition, state.CursorPos)
+	resp.CursorPos = caretIndex
+	resp.CompositionCursor = caretIndex
 	resp.SelStart = state.SelStart
 	resp.SelEnd = state.SelEnd
 	customPhraseCandidates := ime.visibleCustomPhraseCandidatesForState(state)

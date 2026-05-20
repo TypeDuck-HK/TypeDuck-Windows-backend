@@ -4144,3 +4144,17 @@ func TestNativeBackendRedeployRunsAsync(t *testing.T) {
 		t.Fatal("expected completion notification to be consumed once")
 	}
 }
+
+func TestCompositionCaretRuneIndex(t *testing.T) {
+	if got := compositionCaretRuneIndex("nihao", 2); got != 2 {
+		t.Fatalf("ASCII caret: got %d want 2", got)
+	}
+	const mixed = "你hao"
+	byteAfterNi := len("你")
+	if got := compositionCaretRuneIndex(mixed, byteAfterNi); got != 1 {
+		t.Fatalf("UTF-8 caret after CJK: got %d want 1", got)
+	}
+	if got := compositionCaretRuneIndex(mixed, len(mixed)); got != 4 {
+		t.Fatalf("end caret: got %d want 4", got)
+	}
+}
