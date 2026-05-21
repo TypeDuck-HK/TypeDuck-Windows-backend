@@ -307,15 +307,15 @@ try {
     Write-Step -Title "Step 6: Prepare packaged Rime shared data"
     Prepare-RimeData -RimeDataDir $RimeDataDir -PackageRimeDataDir $PackageRimeDataDir
 
-    $sourceAppearanceThemes = Join-Path $RimeDir "data\appearance_themes.json"
-    $packageAppearanceThemes = Join-Path $PackageRimeDataDir "appearance_themes.json"
-    if (Test-Path -LiteralPath $sourceAppearanceThemes) {
-        Copy-Item -LiteralPath $sourceAppearanceThemes -Destination $packageAppearanceThemes -Force
-        Write-Host "[INFO] Copied appearance_themes.json into packaged Rime data"
+    $sourceAppearanceThemes = Join-Path $RimeDir "appearance_themes.json"
+    $packageAppearanceThemes = Join-Path $PackageRimeDir "appearance_themes.json"
+    $packageAppearanceThemesData = Join-Path $PackageRimeDataDir "appearance_themes.json"
+    if (-not (Test-Path -LiteralPath $sourceAppearanceThemes)) {
+        throw "Missing builtin appearance themes file: `"$sourceAppearanceThemes`""
     }
-    else {
-        Write-Warning "Missing builtin appearance themes file: `"$sourceAppearanceThemes`""
-    }
+    Copy-Item -LiteralPath $sourceAppearanceThemes -Destination $packageAppearanceThemes -Force
+    Copy-Item -LiteralPath $sourceAppearanceThemes -Destination $packageAppearanceThemesData -Force
+    Write-Host "[INFO] Copied appearance_themes.json into packaged Rime runtime"
 
     $pathsToRemove = @(
         @{ Path = Join-Path $PackageDir "input_methods\rime\data\others"; Label = "rime shared data others directory" },

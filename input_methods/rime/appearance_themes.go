@@ -1,6 +1,7 @@
 package rime
 
 import (
+	_ "embed"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -9,6 +10,9 @@ import (
 	"sync"
 	"sync/atomic"
 )
+
+//go:embed appearance_themes.json
+var embeddedBuiltinAppearanceThemes []byte
 
 const (
 	appearanceThemesFileName = "appearance_themes.json"
@@ -54,9 +58,14 @@ func currentThemeRegistryVersion() uint64 {
 func builtinAppearanceThemesPath() string {
 	candidates := []string{}
 	if exePath, err := os.Executable(); err == nil {
-		candidates = append(candidates, filepath.Join(filepath.Dir(exePath), "input_methods", "rime", "data", appearanceThemesFileName))
+		exeDir := filepath.Dir(exePath)
+		candidates = append(candidates,
+			filepath.Join(exeDir, "input_methods", "rime", appearanceThemesFileName),
+			filepath.Join(exeDir, "input_methods", "rime", "data", appearanceThemesFileName),
+		)
 	}
 	candidates = append(candidates,
+		filepath.Join("input_methods", "rime", appearanceThemesFileName),
 		filepath.Join("input_methods", "rime", "data", appearanceThemesFileName),
 		filepath.Join("data", appearanceThemesFileName),
 	)
@@ -69,6 +78,26 @@ func builtinAppearanceThemesPath() string {
 		}
 	}
 	return ""
+}
+
+func loadBuiltinThemes() ([]ThemeDefinition, error) {
+	if path := builtinAppearanceThemesPath(); path != "" {
+		themes, err := loadAppearanceThemesFile(path)
+		if err != nil {
+			return nil, err
+		}
+		if len(themes) > 0 {
+			return themes, nil
+		}
+	}
+	if len(embeddedBuiltinAppearanceThemes) == 0 {
+		return nil, nil
+	}
+	var file appearanceThemesFile
+	if err := json.Unmarshal(embeddedBuiltinAppearanceThemes, &file); err != nil {
+		return nil, err
+	}
+	return file.Themes, nil
 }
 
 func userAppearanceThemesPath() string {
@@ -163,7 +192,7 @@ func normalizeThemeDefinition(theme ThemeDefinition) ThemeDefinition {
 }
 
 func reloadThemeRegistry() error {
-	builtinThemes, err := loadAppearanceThemesFile(builtinAppearanceThemesPath())
+	builtinThemes, err := loadBuiltinThemes()
 	if err != nil {
 		return err
 	}
