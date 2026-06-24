@@ -16,7 +16,7 @@ var embeddedBuiltinAppearanceThemes []byte
 
 const (
 	appearanceThemesFileName = "appearance_themes.json"
-	themeRegistryVersionInit   = 1
+	themeRegistryVersionInit = 1
 )
 
 type ThemeDefinition struct {
@@ -24,12 +24,16 @@ type ThemeDefinition struct {
 	Label      string           `json:"label"`
 	Source     string           `json:"source"`
 	SourceFile string           `json:"source_file,omitempty"`
+	Palette    ThemePalette     `json:"palette,omitempty"`
 	Appearance appearanceConfig `json:"appearance"`
 }
 
+type ThemePalette map[string]string
+
 type appearanceThemesFile struct {
-	Version int               `json:"version"`
-	Themes  []ThemeDefinition `json:"themes"`
+	Version int                    `json:"version"`
+	Fonts   map[string]interface{} `json:"fonts,omitempty"`
+	Themes  []ThemeDefinition      `json:"themes"`
 }
 
 var (
@@ -249,9 +253,45 @@ func isRegisteredTheme(theme string) bool {
 }
 
 func themeAppearanceConfig(theme ThemeDefinition) appearanceConfig {
-	cfg := cloneAppearanceConfig(theme.Appearance)
+	cfg := semanticPaletteAppearanceConfig(theme.Palette)
+	if len(theme.Palette) == 0 {
+		cfg = cloneAppearanceConfig(theme.Appearance)
+	}
 	themeID := theme.ID
 	cfg.CandidateTheme = &themeID
+	return cfg
+}
+
+func semanticPaletteAppearanceConfig(palette ThemePalette) appearanceConfig {
+	var cfg appearanceConfig
+	if len(palette) == 0 {
+		return cfg
+	}
+	setString := func(value string) *string {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return nil
+		}
+		return &value
+	}
+	cfg.CandidateBackgroundColor = setString(palette["panel_background"])
+	cfg.CandidateHighlightColor = setString(palette["selection_background"])
+	cfg.CandidateTextColor = setString(palette["text_primary"])
+	if cfg.CandidateTextColor == nil {
+		cfg.CandidateTextColor = setString(palette["selection_text"])
+	}
+	cfg.CandidateHighlightTextColor = setString(palette["selection_text"])
+	if cfg.CandidateHighlightTextColor == nil {
+		cfg.CandidateHighlightTextColor = setString(palette["text_primary"])
+	}
+	cfg.CandidateCommentColor = setString(palette["definition_text"])
+	if cfg.CandidateCommentColor == nil {
+		cfg.CandidateCommentColor = setString(palette["text_secondary"])
+	}
+	cfg.CandidateCommentHighlightColor = setString(palette["selection_text"])
+	if cfg.CandidateCommentHighlightColor == nil {
+		cfg.CandidateCommentHighlightColor = setString(palette["text_primary"])
+	}
 	return cfg
 }
 

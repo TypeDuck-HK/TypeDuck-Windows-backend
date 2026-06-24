@@ -11,11 +11,15 @@
 
 .PARAMETER PackageDir
   Packaged runtime directory (default: scripts\build\moqi-ime).
+
+.PARAMETER RimeDataSource
+  Rime shared data directory to package (default: rime-frost under RepoRoot).
 #>
 param(
     [string] $RepoRoot = "",
     [string] $BuildRoot = "",
-    [string] $PackageDir = ""
+    [string] $PackageDir = "",
+    [string] $RimeDataSource = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -123,10 +127,11 @@ function Prepare-RimeData {
     Remove-IfExists -Path $PackageRimeDataDir
     Ensure-Directory -Path $PackageRimeDataDir
 
-    Write-Host "[INFO] Copying shared data from rime-frost submodule ..."
+    Write-Host "[INFO] Copying shared data from `"$RimeDataDir`" ..."
     Copy-DirectoryContents -Source $RimeDataDir -Destination $PackageRimeDataDir
 
     Remove-IfExists -Path (Join-Path $PackageRimeDataDir ".github")
+    Remove-IfExists -Path (Join-Path $PackageRimeDataDir ".git")
 
     foreach ($name in @("README.md", "LICENSE")) {
         $path = Join-Path $PackageRimeDataDir $name
@@ -213,7 +218,8 @@ $BackendSnippet = Join-Path $BuildRoot "backends.moqi-ime.json"
 $InputMethodsDir = Join-Path $RepoRoot "input_methods"
 $IconsDir = Join-Path $RepoRoot "icons"
 $RimeDir = Join-Path $InputMethodsDir "rime"
-$RimeDataDir = Join-Path $RepoRoot "rime-frost"
+if (-not $RimeDataSource) { $RimeDataSource = Join-Path $RepoRoot "rime-frost" }
+$RimeDataDir = [System.IO.Path]::GetFullPath($RimeDataSource)
 $PackageRimeDir = Join-Path $PackageDir "input_methods\rime"
 $PackageRimeDataDir = Join-Path $PackageRimeDir "data"
 $ServerIcon = Join-Path $IconsDir "mo.ico"
@@ -243,7 +249,7 @@ Ensure-Directory -Path $PackageDir
 Write-Host "[INFO] Output directory: `"$PackageDir`""
 
 if (-not (Test-Path -LiteralPath (Join-Path $RimeDataDir "default.yaml"))) {
-    throw "Missing rime-frost shared data submodule: `"$RimeDataDir`"`nRun: git submodule update --init --recursive rime-frost"
+    throw "Missing Rime shared data directory: `"$RimeDataDir`"`nExpected default.yaml or pass -RimeDataSource."
 }
 
 Push-Location $RepoRoot
@@ -315,7 +321,12 @@ try {
     }
     Copy-Item -LiteralPath $sourceAppearanceThemes -Destination $packageAppearanceThemes -Force
     Copy-Item -LiteralPath $sourceAppearanceThemes -Destination $packageAppearanceThemesData -Force
-    Write-Host "[INFO] Copied appearance_themes.json into packaged Rime runtime"
+    $canonicalHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $packageAppearanceThemes).Hash
+    $dataHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $packageAppearanceThemesData).Hash
+    if ($canonicalHash -ne $dataHash) {
+        throw "Packaged appearance theme compatibility copy is not byte-identical to the canonical root file."
+    }
+    Write-Host "[INFO] Copied canonical TypeDuck appearance_themes.json into packaged Rime runtime and compatibility data path"
 
     $pathsToRemove = @(
         @{ Path = Join-Path $PackageDir "input_methods\rime\data\others"; Label = "rime shared data others directory" },
