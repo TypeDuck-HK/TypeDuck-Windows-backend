@@ -1,158 +1,216 @@
 {
-  "version": 1,
+  "version": 2,
+  "source": {
+    "product": "TypeDuck Windows IME",
+    "web_alpha_fixture": "2026-06-23",
+    "web_alpha_commit": "db21054",
+    "notes": [
+      "Palette values are derived from TypeDuck Web alpha tailwind.config.ts and index.css.",
+      "Palette role names are native semantic names, not Tailwind or DaisyUI token names."
+    ]
+  },
+  "fonts": {
+    "default_interface": {
+      "description": "HK Chinese and English interface text",
+      "stack": [
+        "Segoe UI",
+        "Microsoft JhengHei UI",
+        "Microsoft JhengHei",
+        "Noto Sans HK",
+        "Noto Sans CJK HK",
+        "Arial",
+        "sans-serif"
+      ],
+      "point_size": 12
+    },
+    "candidate_chinese_sung": {
+      "label": "宋體 Sung",
+      "description": "Default Chinese candidate presentation",
+      "stack": [
+        "Chiron Sung HK",
+        "Chiron Sung HK WS",
+        "MingLiU_HKSCS",
+        "MingLiU_HKSCS-ExtB",
+        "MingLiU",
+        "PMingLiU",
+        "Noto Serif HK",
+        "Noto Serif CJK HK",
+        "serif"
+      ],
+      "point_size": 13
+    },
+    "candidate_chinese_hei": {
+      "label": "黑體 Hei",
+      "description": "Optional Chinese candidate presentation",
+      "stack": [
+        "Chiron Hei HK",
+        "Chiron Hei HK WS",
+        "Microsoft JhengHei UI",
+        "Microsoft JhengHei",
+        "Noto Sans HK",
+        "Noto Sans CJK HK",
+        "sans-serif"
+      ],
+      "point_size": 13
+    },
+    "dictionary_headword_sung": {
+      "description": "Dictionary headword with Kai fallback over Sung",
+      "stack": [
+        "DFHKStdKai-B5",
+        "BiauKaiHK",
+        "BiauKai",
+        "DFKai-SB",
+        "KaiU",
+        "Kaiti TC",
+        "Chiron Sung HK",
+        "MingLiU_HKSCS",
+        "serif"
+      ],
+      "point_size": 32
+    },
+    "dictionary_headword_hei": {
+      "description": "Dictionary headword with Kai fallback over Hei",
+      "stack": [
+        "DFHKStdKai-B5",
+        "BiauKaiHK",
+        "BiauKai",
+        "DFKai-SB",
+        "KaiU",
+        "Kaiti TC",
+        "Chiron Hei HK",
+        "Microsoft JhengHei UI",
+        "sans-serif"
+      ],
+      "point_size": 32
+    },
+    "dictionary_comment": {
+      "description": "Dictionary body, comments, Jyutping, labels, and table text",
+      "stack": [
+        "Segoe UI",
+        "Microsoft JhengHei UI",
+        "Microsoft JhengHei",
+        "Noto Sans HK",
+        "Noto Sans CJK HK",
+        "Arial",
+        "sans-serif"
+      ],
+      "point_size": 12
+    },
+    "display_languages": {
+      "eng": {
+        "label": "英語 English",
+        "lang": "en",
+        "stack": [
+          "Segoe UI",
+          "Roboto",
+          "Helvetica Neue",
+          "Arial",
+          "Noto Sans",
+          "sans-serif"
+        ],
+        "point_size": 12
+      },
+      "hin": {
+        "label": "印地語 Hindi",
+        "lang": "hi",
+        "stack": [
+          "Nirmala UI",
+          "Mangal",
+          "Segoe UI",
+          "Noto Sans Devanagari",
+          "sans-serif"
+        ],
+        "point_size": 11
+      },
+      "ind": {
+        "label": "印尼語 Indonesian",
+        "lang": "id",
+        "stack": [
+          "Times New Roman",
+          "Georgia",
+          "Cambria",
+          "Noto Serif",
+          "MingLiU_HKSCS",
+          "Noto Serif HK",
+          "serif"
+        ],
+        "point_size": 12
+      },
+      "nep": {
+        "label": "尼泊爾語 Nepali",
+        "lang": "ne",
+        "stack": [
+          "Nirmala UI",
+          "Mangal",
+          "Segoe UI",
+          "Noto Sans Devanagari",
+          "sans-serif"
+        ],
+        "point_size": 11
+      },
+      "urd": {
+        "label": "烏爾都語 Urdu",
+        "lang": "ur",
+        "stack": [
+          "Urdu Typesetting",
+          "Noto Nastaliq Urdu",
+          "Tahoma",
+          "Segoe UI",
+          "sans-serif"
+        ],
+        "point_size": 10
+      }
+    }
+  },
   "themes": [
     {
-      "id": "default",
-      "label": "默认主题",
-      "source": "builtin",
-      "appearance": {
-        "candidate_background_color": "#ffffff",
-        "candidate_highlight_color": "#c6ddf9",
-        "candidate_text_color": "#000000",
-        "candidate_highlight_text_color": "#000000"
+      "id": "light",
+      "label": "淺色 Light",
+      "source": "typeduck-web-alpha",
+      "palette": {
+        "panel_background": "#ffffff",
+        "dictionary_background": "#f6f3ed",
+        "input_buffer_background": "#f6ead8",
+        "input_buffer_text": "#463a2a",
+        "panel_border": "#ded9cf",
+        "selection_background": "#fedc9c",
+        "selection_text": "#282725",
+        "accent": "#dfa852",
+        "accent_text": "#483312",
+        "text_primary": "#282725",
+        "text_secondary": "#5e564b",
+        "pronunciation_text": "#69502c",
+        "definition_text": "#614c34",
+        "disabled_text": "#bdb7ad",
+        "link_text": "#9b6000",
+        "link_hover_text": "#634308",
+        "tooltip_background": "#efede8",
+        "tooltip_text": "#3f3b34"
       }
     },
     {
-      "id": "theme2",
-      "label": "橘白",
-      "source": "builtin",
-      "appearance": {
-        "candidate_background_color": "#000000",
-        "candidate_highlight_color": "#ff9000",
-        "candidate_text_color": "#ffffff",
-        "candidate_highlight_text_color": "#000000"
-      }
-    },
-    {
-      "id": "moqi",
-      "label": "墨奇",
-      "source": "builtin",
-      "appearance": {
-        "candidate_background_color": "#000000",
-        "candidate_highlight_color": "#ffffff",
-        "candidate_text_color": "#ffffff",
-        "candidate_highlight_text_color": "#000000"
-      }
-    },
-    {
-      "id": "purple",
-      "label": "很有韵味",
-      "source": "builtin",
-      "appearance": {
-        "candidate_background_color": "#f3e8ff",
-        "candidate_highlight_color": "#8b5cf6",
-        "candidate_text_color": "#4c1d95",
-        "candidate_highlight_text_color": "#ffffff"
-      }
-    },
-    {
-      "id": "wallgray",
-      "label": "墙灰",
-      "source": "builtin",
-      "appearance": {
-        "candidate_background_color": "#d6d3d1",
-        "candidate_highlight_color": "#94a3b8",
-        "candidate_text_color": "#44403c",
-        "candidate_highlight_text_color": "#ffffff"
-      }
-    },
-    {
-      "id": "orange",
-      "label": "橙狗",
-      "source": "builtin",
-      "appearance": {
-        "candidate_background_color": "#fed7aa",
-        "candidate_highlight_color": "#ea580c",
-        "candidate_text_color": "#7c2d12",
-        "candidate_highlight_text_color": "#ffffff"
-      }
-    },
-    {
-      "id": "redplum",
-      "label": "老红梅",
-      "source": "builtin",
-      "appearance": {
-        "candidate_background_color": "#f8efea",
-        "candidate_highlight_color": "#6f1028",
-        "candidate_text_color": "#3f1d24",
-        "candidate_highlight_text_color": "#fff7f5"
-      }
-    },
-    {
-      "id": "shacheng",
-      "label": "沙城老窖",
-      "source": "builtin",
-      "appearance": {
-        "candidate_background_color": "#2f2424",
-        "candidate_highlight_color": "#d4af5a",
-        "candidate_text_color": "#f6dda0",
-        "candidate_highlight_text_color": "#2b1d14"
-      }
-    },
-    {
-      "id": "globe",
-      "label": "地球仪",
-      "source": "builtin",
-      "appearance": {
-        "candidate_background_color": "#67d4ff",
-        "candidate_highlight_color": "#f4c542",
-        "candidate_text_color": "#083344",
-        "candidate_highlight_text_color": "#1f2937"
-      }
-    },
-    {
-      "id": "soymilk",
-      "label": "豆浆杯",
-      "source": "builtin",
-      "appearance": {
-        "candidate_background_color": "#f4efe6",
-        "candidate_highlight_color": "#a3ad6a",
-        "candidate_text_color": "#4b4b43",
-        "candidate_highlight_text_color": "#1f2917"
-      }
-    },
-    {
-      "id": "chrysanthemum",
-      "label": "菊花茶",
-      "source": "builtin",
-      "appearance": {
-        "candidate_background_color": "#f7f1dc",
-        "candidate_highlight_color": "#d6a823",
-        "candidate_text_color": "#5b4a1d",
-        "candidate_highlight_text_color": "#fffdf5"
-      }
-    },
-    {
-      "id": "qinhuangdao",
-      "label": "秦皇岛",
-      "source": "builtin",
-      "appearance": {
-        "candidate_background_color": "#d9edf4",
-        "candidate_highlight_color": "#5fa7c7",
-        "candidate_text_color": "#1f4f68",
-        "candidate_highlight_text_color": "#f8fdff"
-      }
-    },
-    {
-      "id": "bubblegum",
-      "label": "歪比巴卜",
-      "source": "builtin",
-      "appearance": {
-        "candidate_background_color": "#ffd6eb",
-        "candidate_highlight_color": "#7ee7d8",
-        "candidate_text_color": "#7a2e67",
-        "candidate_highlight_text_color": "#16313a"
-      }
-    },
-    {
-      "id": "pepsi",
-      "label": "百事可乐",
-      "source": "builtin",
-      "appearance": {
-        "candidate_background_color": "#1d4ed8",
-        "candidate_highlight_color": "#f8fafc",
-        "candidate_text_color": "#ffffff",
-        "candidate_highlight_text_color": "#b91c1c"
+      "id": "dark",
+      "label": "深色 Dark",
+      "source": "typeduck-web-alpha",
+      "palette": {
+        "panel_background": "#201e1c",
+        "dictionary_background": "#36322d",
+        "input_buffer_background": "#4d3b24",
+        "input_buffer_text": "#fff0c2",
+        "panel_border": "#50473c",
+        "selection_background": "#725427",
+        "selection_text": "#fff8e9",
+        "accent": "#d4ae69",
+        "accent_text": "#241b0d",
+        "text_primary": "#fff8e9",
+        "text_secondary": "#dad0bd",
+        "pronunciation_text": "#fbdfa3",
+        "definition_text": "#fbebc5",
+        "disabled_text": "#767168",
+        "link_text": "#ca9f4f",
+        "link_hover_text": "#efaf3a",
+        "tooltip_background": "#302e2a",
+        "tooltip_text": "#e5e1d6"
       }
     }
   ]
