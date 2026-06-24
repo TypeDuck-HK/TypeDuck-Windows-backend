@@ -21,24 +21,25 @@ const (
 	APP         = "Moqi"
 	APP_VERSION = "0.01"
 
-	ID_MODE_ICON           = 1
-	ID_ASCII_MODE          = 2
-	ID_FULL_SHAPE          = 3
-	ID_ASCII_PUNCT         = 4
-	ID_TRADITIONALIZATION  = 5
-	ID_DEPLOY              = 10
-	ID_SYNC                = 11
-	ID_SYNC_DIR            = 12
-	ID_SHARED_DIR          = 13
-	ID_USER_DIR            = 14
-	ID_LOG_DIR             = 16
-	ID_UPDATE_CONFIG       = 17
-	ID_HELP_DOCS           = 21
-	ID_DISCUSSIONS         = 22
-	ID_DOWNLOAD_SCHEME_SET = 23
-	ID_SCHEMA_BASE         = 1000
-	ID_SWITCH_BASE         = 2000
-	ID_SCHEME_SET_BASE     = 3000
+	ID_MODE_ICON               = 1
+	ID_ASCII_MODE              = 2
+	ID_FULL_SHAPE              = 3
+	ID_ASCII_PUNCT             = 4
+	ID_TRADITIONALIZATION      = 5
+	ID_DEPLOY                  = 10
+	ID_SYNC                    = 11
+	ID_SYNC_DIR                = 12
+	ID_SHARED_DIR              = 13
+	ID_USER_DIR                = 14
+	ID_LOG_DIR                 = 16
+	ID_UPDATE_CONFIG           = 17
+	ID_HELP_DOCS               = 21
+	ID_DISCUSSIONS             = 22
+	ID_DOWNLOAD_SCHEME_SET     = 23
+	ID_TYPEDUCK_APPLY_SETTINGS = 24
+	ID_SCHEMA_BASE             = 1000
+	ID_SWITCH_BASE             = 2000
+	ID_SCHEME_SET_BASE         = 3000
 
 	ID_APPEARANCE_INLINE_PREEDIT               = 100
 	ID_APPEARANCE_FONT_14                      = 110
@@ -892,6 +893,11 @@ func (ime *IME) onCommand(req *imecore.Request, resp *imecore.Response) *imecore
 			if resp.TrayNotification == nil {
 				resp.TrayNotification = deployTrayNotification(false)
 			}
+			resp.ReturnValue = 0
+			return resp
+		}
+	case ID_TYPEDUCK_APPLY_SETTINGS:
+		if !ime.applyTypeDuckPreferences(req, resp) {
 			resp.ReturnValue = 0
 			return resp
 		}

@@ -13,6 +13,9 @@ import (
 
 const appearanceConfigFileName = "appearance_config.json"
 const rimeDefaultCustomConfigFileName = "default.custom.yaml"
+const rimeCommonCustomConfigFileName = "common.custom.yaml"
+const typeDuckPreferencesFileName = "TypeDuckPreferences.json"
+const typeDuckSettingsApplyFailure = "設定已儲存，但輸入法重新部署失敗 / Settings were saved, but IME redeploy failed"
 
 type appearanceConfig struct {
 	CandidateTheme                 *string           `json:"candidate_theme,omitempty"`
@@ -40,6 +43,15 @@ type appearanceConfig struct {
 	SharedTraditionalization       *bool             `json:"shared_traditionalization,omitempty"`
 	AutoPairQuotes                 *bool             `json:"auto_pair_quotes,omitempty"`
 	SemicolonSelectSecond          *bool             `json:"semicolon_select_second,omitempty"`
+}
+
+type typeDuckRimePreferences struct {
+	PageSize         int  `json:"pageSize"`
+	EnableCompletion bool `json:"enableCompletion"`
+	EnableCorrection bool `json:"enableCorrection"`
+	EnableSentence   bool `json:"enableSentence"`
+	EnableLearning   bool `json:"enableLearning"`
+	IsCangjie5       bool `json:"isCangjie5"`
 }
 
 var appearanceState struct {
@@ -154,6 +166,55 @@ func legacyUserAppearanceConfigPath() string {
 		return ""
 	}
 	return filepath.Join(root, defaultSchemeSetName, appearanceConfigFileName)
+}
+
+func typeDuckPreferencesPath() string {
+	root := os.Getenv("LOCALAPPDATA")
+	if root == "" {
+		var err error
+		root, err = os.UserConfigDir()
+		if err != nil || strings.TrimSpace(root) == "" {
+			return ""
+		}
+	}
+	return filepath.Join(root, "TypeDuckIME", typeDuckPreferencesFileName)
+}
+
+func defaultTypeDuckRimePreferences() typeDuckRimePreferences {
+	return typeDuckRimePreferences{
+		PageSize:         6,
+		EnableCompletion: true,
+		EnableCorrection: false,
+		EnableSentence:   true,
+		EnableLearning:   true,
+		IsCangjie5:       true,
+	}
+}
+
+func normalizeTypeDuckRimePreferences(prefs typeDuckRimePreferences) typeDuckRimePreferences {
+	if prefs.PageSize < 4 || prefs.PageSize > 10 {
+		prefs.PageSize = 6
+	}
+	return prefs
+}
+
+func loadTypeDuckRimePreferences() (typeDuckRimePreferences, bool) {
+	prefs := defaultTypeDuckRimePreferences()
+	path := typeDuckPreferencesPath()
+	if path == "" {
+		return prefs, false
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return prefs, true
+		}
+		return prefs, false
+	}
+	if err := json.Unmarshal(data, &prefs); err != nil {
+		return defaultTypeDuckRimePreferences(), false
+	}
+	return normalizeTypeDuckRimePreferences(prefs), true
 }
 
 func (ime *IME) applyAppearanceConfig(cfg appearanceConfig) {
@@ -515,6 +576,72 @@ func (ime *IME) writeCandidateCountConfig() bool {
 	content := fmt.Sprintf("config_version: '%d'\npatch:\n  menu/page_size: %d\n", ime.candidateCount(), ime.candidateCount())
 	path := filepath.Join(userDir, rimeDefaultCustomConfigFileName)
 	return os.WriteFile(path, []byte(content), 0o644) == nil
+}
+
+func typeDuckCommonPatchList(prefs typeDuckRimePreferences) []string {
+	patches := []string{"common:/show_cangjie_roots"}
+	if !prefs.EnableCompletion {
+		patches = append(patches, "common:/disable_completion")
+	}
+	if prefs.EnableCorrection {
+		patches = append(patches, "common:/enable_correction")
+	}
+	if !prefs.EnableSentence {
+		patches = append(patches, "common:/disable_sentence")
+	}
+	if !prefs.EnableLearning {
+		patches = append(patches, "common:/disable_learning")
+	}
+	if !prefs.IsCangjie5 {
+		patches = append(patches, "common:/use_cangjie3")
+	}
+	return patches
+}
+
+func (ime *IME) writeTypeDuckRimeCustomSettings(prefs typeDuckRimePreferences) bool {
+	userDir := ime.userDir()
+	if userDir == "" {
+		return false
+	}
+	if err := os.MkdirAll(userDir, 0o755); err != nil {
+		return false
+	}
+
+	// This librime fork does not expose TypeDuck Web's levers/custom-settings API,
+	// so the Windows runtime writes the equivalent generated Rime side effects.
+	defaultContent := fmt.Sprintf("config_version: '%d'\npatch:\n  menu/page_size: %d\n", prefs.PageSize, prefs.PageSize)
+	if err := os.WriteFile(filepath.Join(userDir, rimeDefaultCustomConfigFileName), []byte(defaultContent), 0o644); err != nil {
+		return false
+	}
+
+	var common strings.Builder
+	common.WriteString("patch:\n  __patch:\n")
+	for _, patch := range typeDuckCommonPatchList(prefs) {
+		common.WriteString("    - ")
+		common.WriteString(patch)
+		common.WriteByte('\n')
+	}
+	return os.WriteFile(filepath.Join(userDir, rimeCommonCustomConfigFileName), []byte(common.String()), 0o644) == nil
+}
+
+func (ime *IME) applyTypeDuckPreferences(req *imecore.Request, resp *imecore.Response) bool {
+	prefs, ok := loadTypeDuckRimePreferences()
+	if !ok {
+		resp.Error = "設定檔無效，未有變更 Rime 設定 / Settings file is invalid; Rime settings were not changed"
+		return false
+	}
+	if !ime.writeTypeDuckRimeCustomSettings(prefs) {
+		resp.Error = "設定已儲存，但 Rime 自訂設定未能寫入 / Settings were saved, but Rime custom settings could not be written"
+		return false
+	}
+	if !ime.redeploy(req, resp) {
+		resp.Error = typeDuckSettingsApplyFailure
+		if resp.TrayNotification == nil {
+			resp.TrayNotification = deployTrayNotification(false)
+		}
+		return false
+	}
+	return true
 }
 
 func (ime *IME) applyAppearanceCommand(commandID int) bool {
