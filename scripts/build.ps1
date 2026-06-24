@@ -222,7 +222,7 @@ if (-not $RimeDataSource) { $RimeDataSource = Join-Path $RepoRoot "rime-frost" }
 $RimeDataDir = [System.IO.Path]::GetFullPath($RimeDataSource)
 $PackageRimeDir = Join-Path $PackageDir "input_methods\rime"
 $PackageRimeDataDir = Join-Path $PackageRimeDir "data"
-$ServerIcon = Join-Path $IconsDir "mo.ico"
+$ServerIcon = Join-Path $IconsDir "TypeDuck_Transparent.ico"
 $ServerVersionInfo = Join-Path $BuildRoot "server.versioninfo.json"
 $ServerResource = Join-Path $RepoRoot "resource_windows_amd64.syso"
 
@@ -299,6 +299,7 @@ try {
     $packageInputMethodsDir = Join-Path $PackageDir "input_methods"
     Ensure-Directory -Path $packageInputMethodsDir
     Copy-DirectoryContents -Source $RimeDir -Destination (Join-Path $packageInputMethodsDir "rime")
+    Remove-IfExists -Path (Join-Path $PackageRimeDir "icon.ico")
     Write-Host "[INFO] Packaged only input_methods\rime"
 
     Write-Step -Title "Step 5: Copy shared icons"
