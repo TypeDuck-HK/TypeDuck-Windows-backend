@@ -137,7 +137,8 @@ Assert-Contains $packagedSourceSchemaText 'comment_format:\s*(?:\r?\n\s*-\s*xfor
 Assert-Contains $packagedBuildSchemaText 'dictionary_lookup_filter' "Packaged prebuilt schema must enable TypeDuck dictionary lookup filter."
 Assert-Contains $backendBuildScriptText 'TypeDuck-Web\\schema' "Backend build must prefer TypeDuck-Web schema source."
 Assert-Contains $backendRimeGoText 'shouldFullCheckRimeDeploy' "Backend must detect stale user Rime build caches."
-Assert-Contains $backendRimeGoText 'jyut6ping3\.schema\.yaml' "Backend stale-cache marker must include the TypeDuck Jyutping schema."
+Assert-Contains $backendRimeGoText 'filepath\.WalkDir\(sharedDir' "Backend stale-cache check must compare the whole packaged schema folder."
+Assert-Contains $backendRimeGoText 'filepath\.Rel\(sharedDir, packagePath\)' "Backend stale-cache check must map every packaged schema file to the user data mirror."
 
 if ($moqiClient -match 'legacy Moqi fallback|Moqi fallback|set_comment\("Moqi|墨奇"') {
   throw "Legacy Moqi candidate fallback/substitution text found in TSF candidate bridge."

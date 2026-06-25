@@ -253,7 +253,7 @@ func isRegisteredTheme(theme string) bool {
 }
 
 func themeAppearanceConfig(theme ThemeDefinition) appearanceConfig {
-	cfg := semanticPaletteAppearanceConfig(theme.Palette)
+	cfg := paletteAppearanceConfig(theme.Palette)
 	if len(theme.Palette) == 0 {
 		cfg = cloneAppearanceConfig(theme.Appearance)
 	}
@@ -262,7 +262,7 @@ func themeAppearanceConfig(theme ThemeDefinition) appearanceConfig {
 	return cfg
 }
 
-func semanticPaletteAppearanceConfig(palette ThemePalette) appearanceConfig {
+func paletteAppearanceConfig(palette ThemePalette) appearanceConfig {
 	var cfg appearanceConfig
 	if len(palette) == 0 {
 		return cfg

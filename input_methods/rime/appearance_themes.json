@@ -6,7 +6,7 @@
     "web_alpha_commit": "db21054",
     "notes": [
       "Palette values are derived from TypeDuck Web alpha tailwind.config.ts and index.css.",
-      "Palette role names are native semantic names, not Tailwind or DaisyUI token names."
+      "Palette role names are native TypeDuck names, not Tailwind or DaisyUI token names."
     ]
   },
   "fonts": {

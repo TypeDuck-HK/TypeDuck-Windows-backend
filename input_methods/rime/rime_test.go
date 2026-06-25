@@ -1276,35 +1276,46 @@ func TestOnCommandDeployReloadsAIConfig(t *testing.T) {
 	}
 }
 
-func TestShouldFullCheckRimeDeployDetectsStaleSchema(t *testing.T) {
+func TestShouldFullCheckRimeDeployDetectsStaleSchemaFolder(t *testing.T) {
 	sharedDir := t.TempDir()
 	userDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(sharedDir, "build"), 0o755); err != nil {
-		t.Fatal(err)
+	for _, dir := range []string{
+		filepath.Join(sharedDir, "build"),
+		filepath.Join(sharedDir, "opencc"),
+		filepath.Join(userDir, "build"),
+		filepath.Join(userDir, "opencc"),
+	} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if err := os.MkdirAll(filepath.Join(userDir, "build"), 0o755); err != nil {
-		t.Fatal(err)
+	files := map[string]string{
+		"default.yaml":                                   "schema_list:\n  - schema: jyut6ping3\n",
+		filepath.Join("build", "default.yaml"):           "schema_list:\n  - schema: jyut6ping3\n",
+		filepath.Join("build", "jyut6ping3.schema.yaml"): "dictionary_lookup_filter\n",
+		filepath.Join("opencc", "hk2s.json"):             "{\"name\":\"hk2s\"}\n",
+		"jyut6ping3.dict.yaml":                           "name: jyut6ping3\n",
 	}
-	packageSchema := filepath.Join(sharedDir, "build", "jyut6ping3.schema.yaml")
-	userSchema := filepath.Join(userDir, "build", "jyut6ping3.schema.yaml")
-	if err := os.WriteFile(packageSchema, []byte("dictionary_lookup_filter\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(userSchema, []byte("old schema\n"), 0o644); err != nil {
-		t.Fatal(err)
+	for relativePath, content := range files {
+		if err := os.WriteFile(filepath.Join(sharedDir, relativePath), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(userDir, relativePath), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
 
-	if !shouldFullCheckRimeDeploy(sharedDir, userDir, false) {
-		t.Fatal("expected fullcheck for stale user schema")
-	}
-	if err := os.WriteFile(userSchema, []byte("dictionary_lookup_filter\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
 	if shouldFullCheckRimeDeploy(sharedDir, userDir, false) {
-		t.Fatal("did not expect fullcheck when packaged and user schemas match")
+		t.Fatal("did not expect fullcheck when packaged and user schema folders match")
 	}
 	if !shouldFullCheckRimeDeploy(sharedDir, userDir, true) {
 		t.Fatal("expected fullcheck on first run")
+	}
+	if err := os.WriteFile(filepath.Join(userDir, "jyut6ping3.dict.yaml"), []byte("old dictionary\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !shouldFullCheckRimeDeploy(sharedDir, userDir, false) {
+		t.Fatal("expected fullcheck for any stale user schema-folder file")
 	}
 }
 

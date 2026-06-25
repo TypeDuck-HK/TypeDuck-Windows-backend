@@ -46,6 +46,17 @@ func TestBuiltinThemeRegistryLoads(t *testing.T) {
 	}
 }
 
+func TestPaletteAppearanceConfigNameAvoidsAbstractTerminology(t *testing.T) {
+	source, err := os.ReadFile("appearance_themes.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldName := "sema" + "nticPaletteAppearanceConfig"
+	if strings.Contains(string(source), oldName) {
+		t.Fatal("palette appearance mapping should not use the old misleading name")
+	}
+}
+
 func TestAppearanceThemeMenuItems(t *testing.T) {
 	ensureTestThemeRegistry(t)
 	ime := newTestIME()

@@ -1130,23 +1130,44 @@ func shouldFullCheckRimeDeploy(sharedDir, userDir string, firstRun bool) bool {
 	if firstRun {
 		return true
 	}
-	packageSchema := filepath.Join(sharedDir, "build", "jyut6ping3.schema.yaml")
-	userSchema := filepath.Join(userDir, "build", "jyut6ping3.schema.yaml")
-	packageBytes, packageErr := os.ReadFile(packageSchema)
-	if packageErr != nil {
-		debugLogf("RIME fullcheck marker unavailable packageSchema=%q err=%v", packageSchema, packageErr)
+	fullCheck := false
+	walkErr := filepath.WalkDir(sharedDir, func(packagePath string, entry os.DirEntry, err error) error {
+		if err != nil {
+			debugLogf("RIME fullcheck marker walk error packagePath=%q err=%v", packagePath, err)
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		relativePath, relErr := filepath.Rel(sharedDir, packagePath)
+		if relErr != nil {
+			debugLogf("RIME fullcheck marker relative path error packagePath=%q err=%v", packagePath, relErr)
+			return relErr
+		}
+		userPath := filepath.Join(userDir, relativePath)
+		packageBytes, packageErr := os.ReadFile(packagePath)
+		if packageErr != nil {
+			debugLogf("RIME fullcheck marker unavailable packagePath=%q err=%v", packagePath, packageErr)
+			return packageErr
+		}
+		userBytes, userErr := os.ReadFile(userPath)
+		if userErr != nil {
+			debugLogf("RIME fullcheck required missing userPath=%q err=%v", userPath, userErr)
+			fullCheck = true
+			return filepath.SkipAll
+		}
+		if !bytes.Equal(packageBytes, userBytes) {
+			debugLogf("RIME fullcheck required packaged marker differs from user cache package=%q user=%q", packagePath, userPath)
+			fullCheck = true
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	if walkErr != nil && !fullCheck {
+		debugLogf("RIME fullcheck marker walk unavailable sharedDir=%q err=%v", sharedDir, walkErr)
 		return false
 	}
-	userBytes, userErr := os.ReadFile(userSchema)
-	if userErr != nil {
-		debugLogf("RIME fullcheck required missing userSchema=%q err=%v", userSchema, userErr)
-		return true
-	}
-	if !bytes.Equal(packageBytes, userBytes) {
-		debugLogf("RIME fullcheck required packaged schema differs from user cache package=%q user=%q", packageSchema, userSchema)
-		return true
-	}
-	return false
+	return fullCheck
 }
 
 func (ime *IME) Close() {
