@@ -3,6 +3,7 @@
 package rime
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"os"
@@ -1110,8 +1111,9 @@ func (ime *IME) Init(req *imecore.Request) bool {
 		return true
 	}
 
+	fullCheck := shouldFullCheckRimeDeploy(sharedDir, userDir, firstRun)
 	real := newNativeBackend()
-	if real != nil && real.Initialize(sharedDir, userDir, firstRun) {
+	if real != nil && real.Initialize(sharedDir, userDir, fullCheck) {
 		ime.backend = real
 		backendAvailable = true
 	} else {
@@ -1122,6 +1124,29 @@ func (ime *IME) Init(req *imecore.Request) bool {
 		}
 	}
 	return true
+}
+
+func shouldFullCheckRimeDeploy(sharedDir, userDir string, firstRun bool) bool {
+	if firstRun {
+		return true
+	}
+	packageSchema := filepath.Join(sharedDir, "build", "jyut6ping3.schema.yaml")
+	userSchema := filepath.Join(userDir, "build", "jyut6ping3.schema.yaml")
+	packageBytes, packageErr := os.ReadFile(packageSchema)
+	if packageErr != nil {
+		debugLogf("RIME fullcheck marker unavailable packageSchema=%q err=%v", packageSchema, packageErr)
+		return false
+	}
+	userBytes, userErr := os.ReadFile(userSchema)
+	if userErr != nil {
+		debugLogf("RIME fullcheck required missing userSchema=%q err=%v", userSchema, userErr)
+		return true
+	}
+	if !bytes.Equal(packageBytes, userBytes) {
+		debugLogf("RIME fullcheck required packaged schema differs from user cache package=%q user=%q", packageSchema, userSchema)
+		return true
+	}
+	return false
 }
 
 func (ime *IME) Close() {

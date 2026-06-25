@@ -84,9 +84,19 @@ if ([string]::IsNullOrWhiteSpace($expectedRuntimeHash) -or [string]::IsNullOrWhi
 $buildRime = Join-Path $BackendRoot "scripts/build/moqi-ime/input_methods/rime/rime.dll"
 $sourceRime = Join-Path $BackendRoot "input_methods/rime/rime.dll"
 $buildServer = Join-Path $BackendRoot "scripts/build/moqi-ime/server.exe"
+$packagedSchema = Join-Path $BackendRoot "scripts/build/moqi-ime/input_methods/rime/data/jyut6ping3.schema.yaml"
+$packagedTemplate = Join-Path $BackendRoot "scripts/build/moqi-ime/input_methods/rime/data/template.yaml"
+$packagedBuildSchema = Join-Path $BackendRoot "scripts/build/moqi-ime/input_methods/rime/data/build/jyut6ping3.schema.yaml"
+$backendBuildScript = Join-Path $BackendRoot "scripts/build.ps1"
+$backendRimeGo = Join-Path $BackendRoot "input_methods/rime/rime.go"
 Assert-File $sourceRime "TypeDuck source rime.dll"
 Assert-File $buildRime "TypeDuck packaged rime.dll"
 Assert-File $buildServer "TypeDuck packaged server.exe"
+Assert-File $packagedSchema "TypeDuck packaged source schema"
+Assert-File $packagedTemplate "TypeDuck packaged source template"
+Assert-File $packagedBuildSchema "TypeDuck packaged prebuilt schema"
+Assert-File $backendBuildScript "Backend build script"
+Assert-File $backendRimeGo "Backend Rime runtime"
 
 $sourceRimeHash = Get-OptionalHash $sourceRime
 $buildRimeHash = Get-OptionalHash $buildRime
@@ -114,6 +124,20 @@ Assert-Contains $moqiClient 'raw_lookup_comment\(\)' "TSF client must prefer raw
 Assert-Contains $moqiClient 'candidate\["comment"\]' "TSF client must pass candidate comments to the renderer boundary."
 Assert-Contains $backendServer 'writeBackendResponse' "Backend bridge must forward framed backend protobuf responses."
 Assert-Contains $pipeClient 'backend_->handleClientMessage\(this, request\)' "Launcher pipe client must forward requests to the backend."
+
+$packagedSchemaText = Get-Content -Raw -Encoding UTF8 -LiteralPath $packagedSchema
+$packagedTemplateText = Get-Content -Raw -Encoding UTF8 -LiteralPath $packagedTemplate
+$packagedSourceSchemaText = $packagedSchemaText + "`n" + $packagedTemplateText
+$packagedBuildSchemaText = Get-Content -Raw -Encoding UTF8 -LiteralPath $packagedBuildSchema
+$backendBuildScriptText = Get-Content -Raw -LiteralPath $backendBuildScript
+$backendRimeGoText = Get-Content -Raw -LiteralPath $backendRimeGo
+Assert-Contains $packagedSourceSchemaText 'dictionary_lookup_filter' "Packaged source schema must enable TypeDuck dictionary lookup filter."
+Assert-Contains $packagedSourceSchemaText 'always_show_comments:\s*true' "Packaged source schema must always show Jyutping/comment payloads."
+Assert-Contains $packagedSourceSchemaText 'comment_format:\s*(?:\r?\n\s*-\s*xform/\^/\\f/)' "Packaged source schema must prefix main Jyutping comments with form-feed."
+Assert-Contains $packagedBuildSchemaText 'dictionary_lookup_filter' "Packaged prebuilt schema must enable TypeDuck dictionary lookup filter."
+Assert-Contains $backendBuildScriptText 'TypeDuck-Web\\schema' "Backend build must prefer TypeDuck-Web schema source."
+Assert-Contains $backendRimeGoText 'shouldFullCheckRimeDeploy' "Backend must detect stale user Rime build caches."
+Assert-Contains $backendRimeGoText 'jyut6ping3\.schema\.yaml' "Backend stale-cache marker must include the TypeDuck Jyutping schema."
 
 if ($moqiClient -match 'legacy Moqi fallback|Moqi fallback|set_comment\("Moqi|墨奇"') {
   throw "Legacy Moqi candidate fallback/substitution text found in TSF candidate bridge."

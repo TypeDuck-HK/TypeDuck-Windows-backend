@@ -1276,6 +1276,38 @@ func TestOnCommandDeployReloadsAIConfig(t *testing.T) {
 	}
 }
 
+func TestShouldFullCheckRimeDeployDetectsStaleSchema(t *testing.T) {
+	sharedDir := t.TempDir()
+	userDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(sharedDir, "build"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(userDir, "build"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	packageSchema := filepath.Join(sharedDir, "build", "jyut6ping3.schema.yaml")
+	userSchema := filepath.Join(userDir, "build", "jyut6ping3.schema.yaml")
+	if err := os.WriteFile(packageSchema, []byte("dictionary_lookup_filter\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(userSchema, []byte("old schema\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if !shouldFullCheckRimeDeploy(sharedDir, userDir, false) {
+		t.Fatal("expected fullcheck for stale user schema")
+	}
+	if err := os.WriteFile(userSchema, []byte("dictionary_lookup_filter\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if shouldFullCheckRimeDeploy(sharedDir, userDir, false) {
+		t.Fatal("did not expect fullcheck when packaged and user schemas match")
+	}
+	if !shouldFullCheckRimeDeploy(sharedDir, userDir, true) {
+		t.Fatal("expected fullcheck on first run")
+	}
+}
+
 func TestOnCommandDeployIgnoresInvalidAIConfig(t *testing.T) {
 	appData := t.TempDir()
 	t.Setenv("APPDATA", appData)

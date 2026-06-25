@@ -13,7 +13,8 @@
   Packaged runtime directory (default: scripts\build\moqi-ime).
 
 .PARAMETER RimeDataSource
-  Rime shared data directory to package (default: rime-frost under RepoRoot).
+  Rime shared data directory to package. By default this prefers the TypeDuck-Web schema
+  checkout at I:\GitHub\TypeDuck-Web\schema, then falls back to rime-frost under RepoRoot.
 #>
 param(
     [string] $RepoRoot = "",
@@ -218,7 +219,15 @@ $BackendSnippet = Join-Path $BuildRoot "backends.moqi-ime.json"
 $InputMethodsDir = Join-Path $RepoRoot "input_methods"
 $IconsDir = Join-Path $RepoRoot "icons"
 $RimeDir = Join-Path $InputMethodsDir "rime"
-if (-not $RimeDataSource) { $RimeDataSource = Join-Path $RepoRoot "rime-frost" }
+if (-not $RimeDataSource) {
+    $typeDuckSchema = "I:\GitHub\TypeDuck-Web\schema"
+    if (Test-Path -LiteralPath (Join-Path $typeDuckSchema "jyut6ping3.schema.yaml")) {
+        $RimeDataSource = $typeDuckSchema
+    }
+    else {
+        $RimeDataSource = Join-Path $RepoRoot "rime-frost"
+    }
+}
 $RimeDataDir = [System.IO.Path]::GetFullPath($RimeDataSource)
 $PackageRimeDir = Join-Path $PackageDir "input_methods\rime"
 $PackageRimeDataDir = Join-Path $PackageRimeDir "data"
