@@ -91,6 +91,58 @@ func TestRealRimeInitDuration(t *testing.T) {
 	}
 }
 
+func TestPackagedTypeDuckRimeProvidesDictionaryLookupComments(t *testing.T) {
+	packageDir := strings.TrimSpace(os.Getenv("MOQI_RIME_PACKAGE_DIR"))
+	if packageDir == "" {
+		t.Skip("MOQI_RIME_PACKAGE_DIR is not set")
+	}
+	dataDir := filepath.Join(packageDir, "data")
+	if info, err := os.Stat(filepath.Join(packageDir, "rime.dll")); err != nil || info.IsDir() {
+		t.Fatalf("packaged rime.dll is required under %q: err=%v", packageDir, err)
+	}
+	if info, err := os.Stat(dataDir); err != nil || !info.IsDir() {
+		t.Fatalf("packaged Rime data directory is required: %q err=%v", dataDir, err)
+	}
+
+	userDir := t.TempDir()
+	if !RimeInit(dataDir, userDir, APP, APP_VERSION, true) {
+		t.Fatal("RimeInit failed for packaged TypeDuck runtime")
+	}
+	sessionID, ok := StartSession()
+	if !ok || sessionID == 0 {
+		t.Fatal("StartSession failed")
+	}
+	t.Cleanup(func() {
+		EndSession(sessionID)
+		Finalize()
+	})
+	if !SelectSchema(sessionID, "jyut6ping3") {
+		t.Fatal("SelectSchema(jyut6ping3) failed")
+	}
+	SetOption(sessionID, "ascii_mode", false)
+	ClearComposition(sessionID)
+	for _, key := range "hou" {
+		if !ProcessKey(sessionID, int(key), 0) {
+			t.Fatalf("ProcessKey failed for %q", key)
+		}
+	}
+	menu, ok := GetMenu(sessionID)
+	if !ok || len(menu.Candidates) == 0 {
+		t.Fatalf("expected candidates for hou, got ok=%t menu=%#v", ok, menu)
+	}
+	items := make([]candidateItem, 0, len(menu.Candidates))
+	for _, candidate := range menu.Candidates {
+		items = append(items, candidateItem{Text: candidate.Text, Comment: candidate.Comment})
+	}
+	items = newTypeDuckLookup(dataDir).enrichCandidates(items)
+	for _, candidate := range items {
+		if candidate.Text == "好" && strings.Contains(candidate.Comment, "\f\r1,好,hou2") {
+			return
+		}
+	}
+	t.Fatalf("expected TypeDuck dictionary lookup rich comment for 好, got %#v", items)
+}
+
 func TestRealRimeCanCommitText(t *testing.T) {
 	sessionID := newRealRimeSession(t)
 

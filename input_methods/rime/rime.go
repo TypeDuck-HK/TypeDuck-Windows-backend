@@ -194,6 +194,7 @@ type IME struct {
 	lastKeyUpRet                 bool
 	keyComposing                 bool
 	backend                      rimeBackend
+	typeDuckLookup               *typeDuckLookup
 	aiEnabled                    bool
 	aiActive                     bool
 	aiPending                    bool
@@ -1089,6 +1090,7 @@ func (ime *IME) Init(req *imecore.Request) bool {
 			firstRun = true
 		}
 	}
+	ime.typeDuckLookup = newTypeDuckLookup(sharedDir)
 
 	if userDir == "" {
 		log.Println("未找到 APPDATA，原生 RIME 不可用")
@@ -1605,6 +1607,7 @@ func (ime *IME) currentVisibleBackendState() (rimeState, bool) {
 	stateStart := time.Now()
 	state := ime.backend.State()
 	logRimeSlow("backend.State", stateStart, "composition=%d candidates=%d commit=%d", len(state.Composition), len(state.Candidates), len(state.CommitString))
+	state.Candidates = ime.typeDuckLookup.enrichCandidates(state.Candidates)
 	visibleCandidateCount := ime.candidateCount()
 	if visibleCandidateCount > 0 && len(state.Candidates) > visibleCandidateCount {
 		state.Candidates = append([]candidateItem(nil), state.Candidates[:visibleCandidateCount]...)
@@ -1659,8 +1662,8 @@ func (ime *IME) fillAIResponse(resp *imecore.Response) {
 	resp.CompositionString = state.Composition
 	resp.CursorPos = cursor
 	resp.CompositionCursor = cursor
-	resp.SelStart = state.SelStart
-	resp.SelEnd = state.SelEnd
+	resp.SelStart = compositionCaretRuneIndex(state.Composition, state.SelStart)
+	resp.SelEnd = compositionCaretRuneIndex(state.Composition, state.SelEnd)
 
 	combined := make([]string, 0, 1+len(state.Candidates))
 	if len(ime.aiCandidates) > 0 {
@@ -2295,8 +2298,8 @@ func (ime *IME) fillResponseFromBackendState(resp *imecore.Response, allowCommit
 	caretIndex := compositionCaretRuneIndex(state.Composition, state.CursorPos)
 	resp.CursorPos = caretIndex
 	resp.CompositionCursor = caretIndex
-	resp.SelStart = state.SelStart
-	resp.SelEnd = state.SelEnd
+	resp.SelStart = compositionCaretRuneIndex(state.Composition, state.SelStart)
+	resp.SelEnd = compositionCaretRuneIndex(state.Composition, state.SelEnd)
 	customPhraseCandidates := ime.visibleCustomPhraseCandidatesForState(state)
 	if _, overlay, ok := ime.currentSuperAbbrevOverlay(); ok {
 		if len(customPhraseCandidates) > 0 {

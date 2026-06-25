@@ -155,47 +155,47 @@ var (
 	rimeDLLMu sync.Mutex
 	rimeDLL   *syscall.LazyDLL
 	rimeProcs struct {
-		setup                 *syscall.LazyProc
-		initialize            *syscall.LazyProc
-		finalize              *syscall.LazyProc
-		startMaintenance      *syscall.LazyProc
-		joinMaintenanceThread *syscall.LazyProc
-		deployConfigFile      *syscall.LazyProc
-		syncUserData          *syscall.LazyProc
-		createSession         *syscall.LazyProc
-		findSession           *syscall.LazyProc
-		destroySession        *syscall.LazyProc
-		processKey            *syscall.LazyProc
-		selectCandidate       *syscall.LazyProc
-		highlightCandidate            *syscall.LazyProc
-		changePage                    *syscall.LazyProc
-		deleteCandidateOnCurrentPage  *syscall.LazyProc
-		clearComposition              *syscall.LazyProc
-		getInput              *syscall.LazyProc
-		getCommit             *syscall.LazyProc
-		freeCommit            *syscall.LazyProc
-		getContext            *syscall.LazyProc
-		freeContext           *syscall.LazyProc
-		setOption             *syscall.LazyProc
-		getOption             *syscall.LazyProc
-		getSchemaList         *syscall.LazyProc
-		freeSchemaList        *syscall.LazyProc
-		getCurrentSchema      *syscall.LazyProc
-		selectSchema          *syscall.LazyProc
-		schemaOpen            *syscall.LazyProc
-		configOpen            *syscall.LazyProc
-		configClose           *syscall.LazyProc
-		configGetCString      *syscall.LazyProc
-		configGetItem         *syscall.LazyProc
-		configBeginMap        *syscall.LazyProc
-		configBeginList       *syscall.LazyProc
-		configNext            *syscall.LazyProc
-		configEnd             *syscall.LazyProc
-		configListSize        *syscall.LazyProc
-		configSetInt          *syscall.LazyProc
-		getStateLabel         *syscall.LazyProc
-		getStateLabelAbbrev   *syscall.LazyProc
-		getVersion            *syscall.LazyProc
+		setup                        *syscall.LazyProc
+		initialize                   *syscall.LazyProc
+		finalize                     *syscall.LazyProc
+		startMaintenance             *syscall.LazyProc
+		joinMaintenanceThread        *syscall.LazyProc
+		deployConfigFile             *syscall.LazyProc
+		syncUserData                 *syscall.LazyProc
+		createSession                *syscall.LazyProc
+		findSession                  *syscall.LazyProc
+		destroySession               *syscall.LazyProc
+		processKey                   *syscall.LazyProc
+		selectCandidate              *syscall.LazyProc
+		highlightCandidate           *syscall.LazyProc
+		changePage                   *syscall.LazyProc
+		deleteCandidateOnCurrentPage *syscall.LazyProc
+		clearComposition             *syscall.LazyProc
+		getInput                     *syscall.LazyProc
+		getCommit                    *syscall.LazyProc
+		freeCommit                   *syscall.LazyProc
+		getContext                   *syscall.LazyProc
+		freeContext                  *syscall.LazyProc
+		setOption                    *syscall.LazyProc
+		getOption                    *syscall.LazyProc
+		getSchemaList                *syscall.LazyProc
+		freeSchemaList               *syscall.LazyProc
+		getCurrentSchema             *syscall.LazyProc
+		selectSchema                 *syscall.LazyProc
+		schemaOpen                   *syscall.LazyProc
+		configOpen                   *syscall.LazyProc
+		configClose                  *syscall.LazyProc
+		configGetCString             *syscall.LazyProc
+		configGetItem                *syscall.LazyProc
+		configBeginMap               *syscall.LazyProc
+		configBeginList              *syscall.LazyProc
+		configNext                   *syscall.LazyProc
+		configEnd                    *syscall.LazyProc
+		configListSize               *syscall.LazyProc
+		configSetInt                 *syscall.LazyProc
+		getStateLabel                *syscall.LazyProc
+		getStateLabelAbbrev          *syscall.LazyProc
+		getVersion                   *syscall.LazyProc
 	}
 )
 
@@ -212,89 +212,89 @@ func loadRimeDLL(dllPath string) error {
 	}
 	dll := syscall.NewLazyDLL(dllPath)
 	procs := struct {
-		setup                 *syscall.LazyProc
-		initialize            *syscall.LazyProc
-		finalize              *syscall.LazyProc
-		startMaintenance      *syscall.LazyProc
-		joinMaintenanceThread *syscall.LazyProc
-		deployConfigFile      *syscall.LazyProc
-		syncUserData          *syscall.LazyProc
-		createSession         *syscall.LazyProc
-		findSession           *syscall.LazyProc
-		destroySession        *syscall.LazyProc
-		processKey            *syscall.LazyProc
-		selectCandidate       *syscall.LazyProc
-		highlightCandidate            *syscall.LazyProc
-		changePage                    *syscall.LazyProc
-		deleteCandidateOnCurrentPage  *syscall.LazyProc
-		clearComposition              *syscall.LazyProc
-		getInput              *syscall.LazyProc
-		getCommit             *syscall.LazyProc
-		freeCommit            *syscall.LazyProc
-		getContext            *syscall.LazyProc
-		freeContext           *syscall.LazyProc
-		setOption             *syscall.LazyProc
-		getOption             *syscall.LazyProc
-		getSchemaList         *syscall.LazyProc
-		freeSchemaList        *syscall.LazyProc
-		getCurrentSchema      *syscall.LazyProc
-		selectSchema          *syscall.LazyProc
-		schemaOpen            *syscall.LazyProc
-		configOpen            *syscall.LazyProc
-		configClose           *syscall.LazyProc
-		configGetCString      *syscall.LazyProc
-		configGetItem         *syscall.LazyProc
-		configBeginMap        *syscall.LazyProc
-		configBeginList       *syscall.LazyProc
-		configNext            *syscall.LazyProc
-		configEnd             *syscall.LazyProc
-		configListSize        *syscall.LazyProc
-		configSetInt          *syscall.LazyProc
-		getStateLabel         *syscall.LazyProc
-		getStateLabelAbbrev   *syscall.LazyProc
-		getVersion            *syscall.LazyProc
+		setup                        *syscall.LazyProc
+		initialize                   *syscall.LazyProc
+		finalize                     *syscall.LazyProc
+		startMaintenance             *syscall.LazyProc
+		joinMaintenanceThread        *syscall.LazyProc
+		deployConfigFile             *syscall.LazyProc
+		syncUserData                 *syscall.LazyProc
+		createSession                *syscall.LazyProc
+		findSession                  *syscall.LazyProc
+		destroySession               *syscall.LazyProc
+		processKey                   *syscall.LazyProc
+		selectCandidate              *syscall.LazyProc
+		highlightCandidate           *syscall.LazyProc
+		changePage                   *syscall.LazyProc
+		deleteCandidateOnCurrentPage *syscall.LazyProc
+		clearComposition             *syscall.LazyProc
+		getInput                     *syscall.LazyProc
+		getCommit                    *syscall.LazyProc
+		freeCommit                   *syscall.LazyProc
+		getContext                   *syscall.LazyProc
+		freeContext                  *syscall.LazyProc
+		setOption                    *syscall.LazyProc
+		getOption                    *syscall.LazyProc
+		getSchemaList                *syscall.LazyProc
+		freeSchemaList               *syscall.LazyProc
+		getCurrentSchema             *syscall.LazyProc
+		selectSchema                 *syscall.LazyProc
+		schemaOpen                   *syscall.LazyProc
+		configOpen                   *syscall.LazyProc
+		configClose                  *syscall.LazyProc
+		configGetCString             *syscall.LazyProc
+		configGetItem                *syscall.LazyProc
+		configBeginMap               *syscall.LazyProc
+		configBeginList              *syscall.LazyProc
+		configNext                   *syscall.LazyProc
+		configEnd                    *syscall.LazyProc
+		configListSize               *syscall.LazyProc
+		configSetInt                 *syscall.LazyProc
+		getStateLabel                *syscall.LazyProc
+		getStateLabelAbbrev          *syscall.LazyProc
+		getVersion                   *syscall.LazyProc
 	}{
-		setup:                 dll.NewProc("RimeSetup"),
-		initialize:            dll.NewProc("RimeInitialize"),
-		finalize:              dll.NewProc("RimeFinalize"),
-		startMaintenance:      dll.NewProc("RimeStartMaintenance"),
-		joinMaintenanceThread: dll.NewProc("RimeJoinMaintenanceThread"),
-		deployConfigFile:      dll.NewProc("RimeDeployConfigFile"),
-		syncUserData:          dll.NewProc("RimeSyncUserData"),
-		createSession:         dll.NewProc("RimeCreateSession"),
-		findSession:           dll.NewProc("RimeFindSession"),
-		destroySession:        dll.NewProc("RimeDestroySession"),
-		processKey:            dll.NewProc("RimeProcessKey"),
-		selectCandidate:       dll.NewProc("RimeSelectCandidateOnCurrentPage"),
+		setup:                        dll.NewProc("RimeSetup"),
+		initialize:                   dll.NewProc("RimeInitialize"),
+		finalize:                     dll.NewProc("RimeFinalize"),
+		startMaintenance:             dll.NewProc("RimeStartMaintenance"),
+		joinMaintenanceThread:        dll.NewProc("RimeJoinMaintenanceThread"),
+		deployConfigFile:             dll.NewProc("RimeDeployConfigFile"),
+		syncUserData:                 dll.NewProc("RimeSyncUserData"),
+		createSession:                dll.NewProc("RimeCreateSession"),
+		findSession:                  dll.NewProc("RimeFindSession"),
+		destroySession:               dll.NewProc("RimeDestroySession"),
+		processKey:                   dll.NewProc("RimeProcessKey"),
+		selectCandidate:              dll.NewProc("RimeSelectCandidateOnCurrentPage"),
 		highlightCandidate:           dll.NewProc("RimeHighlightCandidateOnCurrentPage"),
 		changePage:                   dll.NewProc("RimeChangePage"),
 		deleteCandidateOnCurrentPage: dll.NewProc("RimeDeleteCandidateOnCurrentPage"),
 		clearComposition:             dll.NewProc("RimeClearComposition"),
-		getInput:              dll.NewProc("RimeGetInput"),
-		getCommit:             dll.NewProc("RimeGetCommit"),
-		freeCommit:            dll.NewProc("RimeFreeCommit"),
-		getContext:            dll.NewProc("RimeGetContext"),
-		freeContext:           dll.NewProc("RimeFreeContext"),
-		setOption:             dll.NewProc("RimeSetOption"),
-		getOption:             dll.NewProc("RimeGetOption"),
-		getSchemaList:         dll.NewProc("RimeGetSchemaList"),
-		freeSchemaList:        dll.NewProc("RimeFreeSchemaList"),
-		getCurrentSchema:      dll.NewProc("RimeGetCurrentSchema"),
-		selectSchema:          dll.NewProc("RimeSelectSchema"),
-		schemaOpen:            dll.NewProc("RimeSchemaOpen"),
-		configOpen:            dll.NewProc("RimeConfigOpen"),
-		configClose:           dll.NewProc("RimeConfigClose"),
-		configGetCString:      dll.NewProc("RimeConfigGetCString"),
-		configGetItem:         dll.NewProc("RimeConfigGetItem"),
-		configBeginMap:        dll.NewProc("RimeConfigBeginMap"),
-		configBeginList:       dll.NewProc("RimeConfigBeginList"),
-		configNext:            dll.NewProc("RimeConfigNext"),
-		configEnd:             dll.NewProc("RimeConfigEnd"),
-		configListSize:        dll.NewProc("RimeConfigListSize"),
-		configSetInt:          dll.NewProc("RimeConfigSetInt"),
-		getStateLabel:         dll.NewProc("RimeGetStateLabel"),
-		getStateLabelAbbrev:   dll.NewProc("RimeGetStateLabelAbbreviated"),
-		getVersion:            dll.NewProc("RimeGetVersion"),
+		getInput:                     dll.NewProc("RimeGetInput"),
+		getCommit:                    dll.NewProc("RimeGetCommit"),
+		freeCommit:                   dll.NewProc("RimeFreeCommit"),
+		getContext:                   dll.NewProc("RimeGetContext"),
+		freeContext:                  dll.NewProc("RimeFreeContext"),
+		setOption:                    dll.NewProc("RimeSetOption"),
+		getOption:                    dll.NewProc("RimeGetOption"),
+		getSchemaList:                dll.NewProc("RimeGetSchemaList"),
+		freeSchemaList:               dll.NewProc("RimeFreeSchemaList"),
+		getCurrentSchema:             dll.NewProc("RimeGetCurrentSchema"),
+		selectSchema:                 dll.NewProc("RimeSelectSchema"),
+		schemaOpen:                   dll.NewProc("RimeSchemaOpen"),
+		configOpen:                   dll.NewProc("RimeConfigOpen"),
+		configClose:                  dll.NewProc("RimeConfigClose"),
+		configGetCString:             dll.NewProc("RimeConfigGetCString"),
+		configGetItem:                dll.NewProc("RimeConfigGetItem"),
+		configBeginMap:               dll.NewProc("RimeConfigBeginMap"),
+		configBeginList:              dll.NewProc("RimeConfigBeginList"),
+		configNext:                   dll.NewProc("RimeConfigNext"),
+		configEnd:                    dll.NewProc("RimeConfigEnd"),
+		configListSize:               dll.NewProc("RimeConfigListSize"),
+		configSetInt:                 dll.NewProc("RimeConfigSetInt"),
+		getStateLabel:                dll.NewProc("RimeGetStateLabel"),
+		getStateLabelAbbrev:          dll.NewProc("RimeGetStateLabelAbbreviated"),
+		getVersion:                   dll.NewProc("RimeGetVersion"),
 	}
 
 	for _, proc := range []*syscall.LazyProc{
@@ -356,24 +356,68 @@ func cStringFromBytes(buf []byte) string {
 	return string(buf)
 }
 
-func Init(traits RimeTraits) bool {
-	cTraits := rimeTraitsC{
-		DataSize:             int32(unsafe.Sizeof(rimeTraitsC{})) - 4,
-		SharedDataDir:        utf8Ptr(traits.SharedDataDir),
-		UserDataDir:          utf8Ptr(traits.UserDataDir),
-		DistributionName:     utf8Ptr(traits.DistributionName),
-		DistributionCodeName: utf8Ptr(traits.DistributionCodeName),
-		DistributionVersion:  utf8Ptr(traits.DistributionVersion),
-		AppName:              utf8Ptr(traits.AppName),
-		MinLogLevel:          int32(traits.MinLogLevel),
-		LogDir:               utf8Ptr(traits.LogDir),
-		PrebuiltDataDir:      utf8Ptr(traits.PrebuiltDataDir),
-		StagingDir:           utf8Ptr(traits.StagingDir),
+func typeDuckRimeModules() []string {
+	return []string{"default", "dictionary_lookup"}
+}
+
+func withRimeTraitsC(traits RimeTraits, call func(*rimeTraitsC) uintptr) uintptr {
+	keepAlive := make([][]byte, 0, 10+len(traits.Modules))
+	addString := func(value string) *byte {
+		if value == "" {
+			return nil
+		}
+		buf := append([]byte(value), 0)
+		keepAlive = append(keepAlive, buf)
+		return &buf[0]
 	}
 
-	r1, _, _ := rimeProcs.setup.Call(uintptr(unsafe.Pointer(&cTraits)))
+	cTraits := rimeTraitsC{
+		DataSize:             int32(unsafe.Sizeof(rimeTraitsC{})) - 4,
+		SharedDataDir:        addString(traits.SharedDataDir),
+		UserDataDir:          addString(traits.UserDataDir),
+		DistributionName:     addString(traits.DistributionName),
+		DistributionCodeName: addString(traits.DistributionCodeName),
+		DistributionVersion:  addString(traits.DistributionVersion),
+		AppName:              addString(traits.AppName),
+		MinLogLevel:          int32(traits.MinLogLevel),
+		LogDir:               addString(traits.LogDir),
+		PrebuiltDataDir:      addString(traits.PrebuiltDataDir),
+		StagingDir:           addString(traits.StagingDir),
+	}
+
+	modulePtrs := make([]*byte, 0, len(traits.Modules)+1)
+	for _, module := range traits.Modules {
+		module = strings.TrimSpace(module)
+		if module == "" {
+			continue
+		}
+		modulePtrs = append(modulePtrs, addString(module))
+	}
+	if len(modulePtrs) > 0 {
+		modulePtrs = append(modulePtrs, nil)
+		cTraits.Modules = &modulePtrs[0]
+	}
+
+	result := call(&cTraits)
 	runtime.KeepAlive(cTraits)
+	runtime.KeepAlive(modulePtrs)
+	runtime.KeepAlive(keepAlive)
+	return result
+}
+
+func Init(traits RimeTraits) bool {
+	r1 := withRimeTraitsC(traits, func(cTraits *rimeTraitsC) uintptr {
+		result, _, _ := rimeProcs.setup.Call(uintptr(unsafe.Pointer(cTraits)))
+		return result
+	})
 	return boolResult(r1) || true
+}
+
+func Initialize(traits RimeTraits) {
+	withRimeTraitsC(traits, func(cTraits *rimeTraitsC) uintptr {
+		rimeProcs.initialize.Call(uintptr(unsafe.Pointer(cTraits)))
+		return 0
+	})
 }
 
 func Finalize() {
@@ -857,7 +901,7 @@ func initializeEngine(traits RimeTraits, fullcheck bool) bool {
 	debugLogf("RIME initializeEngine setup 完成 elapsed=%s", time.Since(setupStart))
 
 	initializeStart := time.Now()
-	rimeProcs.initialize.Call(0)
+	Initialize(traits)
 	debugLogf("RIME initializeEngine initialize 完成 elapsed=%s", time.Since(initializeStart))
 	var fullcheckArg uintptr
 	if fullcheck {
@@ -917,6 +961,7 @@ func RimeInit(datadir, userdir, appname, appver string, fullcheck bool) bool {
 		DistributionCodeName: appname,
 		DistributionVersion:  appver,
 		AppName:              fmt.Sprintf("Rime.%s", appname),
+		Modules:              typeDuckRimeModules(),
 		LogDir:               logDir,
 		PrebuiltDataDir:      filepath.Join(datadir, "build"),
 		StagingDir:           filepath.Join(userdir, "build"),
@@ -946,6 +991,7 @@ func RimeRedeploy(datadir, userdir, appname, appver string) bool {
 		DistributionCodeName: appname,
 		DistributionVersion:  appver,
 		AppName:              fmt.Sprintf("Rime.%s", appname),
+		Modules:              typeDuckRimeModules(),
 		LogDir:               logDir,
 		PrebuiltDataDir:      filepath.Join(datadir, "build"),
 		StagingDir:           filepath.Join(userdir, "build"),

@@ -89,6 +89,7 @@ $packagedTemplate = Join-Path $BackendRoot "scripts/build/moqi-ime/input_methods
 $packagedBuildSchema = Join-Path $BackendRoot "scripts/build/moqi-ime/input_methods/rime/data/build/jyut6ping3.schema.yaml"
 $backendBuildScript = Join-Path $BackendRoot "scripts/build.ps1"
 $backendRimeGo = Join-Path $BackendRoot "input_methods/rime/rime.go"
+$backendLibrimeGo = Join-Path $BackendRoot "input_methods/rime/librime.go"
 Assert-File $sourceRime "TypeDuck source rime.dll"
 Assert-File $buildRime "TypeDuck packaged rime.dll"
 Assert-File $buildServer "TypeDuck packaged server.exe"
@@ -97,6 +98,7 @@ Assert-File $packagedTemplate "TypeDuck packaged source template"
 Assert-File $packagedBuildSchema "TypeDuck packaged prebuilt schema"
 Assert-File $backendBuildScript "Backend build script"
 Assert-File $backendRimeGo "Backend Rime runtime"
+Assert-File $backendLibrimeGo "Backend librime bridge"
 
 $sourceRimeHash = Get-OptionalHash $sourceRime
 $buildRimeHash = Get-OptionalHash $buildRime
@@ -131,6 +133,7 @@ $packagedSourceSchemaText = $packagedSchemaText + "`n" + $packagedTemplateText
 $packagedBuildSchemaText = Get-Content -Raw -Encoding UTF8 -LiteralPath $packagedBuildSchema
 $backendBuildScriptText = Get-Content -Raw -LiteralPath $backendBuildScript
 $backendRimeGoText = Get-Content -Raw -LiteralPath $backendRimeGo
+$backendLibrimeGoText = Get-Content -Raw -LiteralPath $backendLibrimeGo
 Assert-Contains $packagedSourceSchemaText 'dictionary_lookup_filter' "Packaged source schema must enable TypeDuck dictionary lookup filter."
 Assert-Contains $packagedSourceSchemaText 'always_show_comments:\s*true' "Packaged source schema must always show Jyutping/comment payloads."
 Assert-Contains $packagedSourceSchemaText 'comment_format:\s*(?:\r?\n\s*-\s*xform/\^/\\f/)' "Packaged source schema must prefix main Jyutping comments with form-feed."
@@ -139,6 +142,8 @@ Assert-Contains $backendBuildScriptText 'TypeDuck-Web\\schema' "Backend build mu
 Assert-Contains $backendRimeGoText 'shouldFullCheckRimeDeploy' "Backend must detect stale user Rime build caches."
 Assert-Contains $backendRimeGoText 'filepath\.WalkDir\(sharedDir' "Backend stale-cache check must compare the whole packaged schema folder."
 Assert-Contains $backendRimeGoText 'filepath\.Rel\(sharedDir, packagePath\)' "Backend stale-cache check must map every packaged schema file to the user data mirror."
+Assert-Contains $backendLibrimeGoText 'dictionary_lookup' "Backend must request the TypeDuck dictionary_lookup module before dictionary_lookup_filter can be created."
+Assert-Contains $backendLibrimeGoText 'Initialize\(traits\)' "Backend must pass RimeTraits modules into RimeInitialize, not initialize with default modules only."
 
 if ($moqiClient -match 'legacy Moqi fallback|Moqi fallback|set_comment\("Moqi|墨奇"') {
   throw "Legacy Moqi candidate fallback/substitution text found in TSF candidate bridge."

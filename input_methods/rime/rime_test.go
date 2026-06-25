@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -3389,6 +3390,38 @@ func TestFillResponseFromBackendStateAppliesCandidateCount(t *testing.T) {
 	}
 }
 
+func TestFillResponseFromBackendStateAddsTypeDuckLookupRows(t *testing.T) {
+	ime := newIsolatedTestIME(t)
+	backend := ime.backend.(*testBackend)
+	backend.composition = "hou"
+	backend.candidates = []candidateItem{{Text: "好"}}
+
+	sharedDir := t.TempDir()
+	dictBody := strings.Join([]string{
+		"# Rime dictionary",
+		"hou2,,,,,,,1,,,adj,yue,,,,,good; very,,,,\t好",
+		"hou3,,,,,,,2,,,v,yue,,,,,like; fond of,,,,\t好",
+	}, "\n")
+	if err := os.WriteFile(filepath.Join(sharedDir, typeDuckLookupDictFile), []byte(dictBody), 0o644); err != nil {
+		t.Fatalf("write TypeDuck lookup dict: %v", err)
+	}
+	ime.typeDuckLookup = newTypeDuckLookup(sharedDir)
+
+	resp := imecore.NewResponse(421, true)
+	ime.fillResponseFromBackendState(resp, false)
+
+	if len(resp.CandidateEntries) != 1 {
+		t.Fatalf("expected one candidate entry, got %#v", resp.CandidateEntries)
+	}
+	comment := resp.CandidateEntries[0].Comment
+	if !strings.Contains(comment, "\f\r1,好,hou2") || !strings.Contains(comment, "\r1,好,hou3") {
+		t.Fatalf("expected rich TypeDuck lookup rows for 好, got %q", comment)
+	}
+	if strings.Count(comment, "\r1,好,") != 2 {
+		t.Fatalf("expected two matched lookup rows, got %q", comment)
+	}
+}
+
 func TestFillResponseFromBackendStateRestoresDefaultSelectKeysWhenBackendOmitsThem(t *testing.T) {
 	ime := newIsolatedTestIME(t)
 	ime.selectKeys = "123"
@@ -4199,5 +4232,26 @@ func TestCompositionCaretRuneIndex(t *testing.T) {
 	}
 	if got := compositionCaretRuneIndex(mixed, len(mixed)); got != 4 {
 		t.Fatalf("end caret: got %d want 4", got)
+	}
+}
+
+func TestCompositionSelectionUsesRuneIndexes(t *testing.T) {
+	const mixed = "〔倉頡五代〕onf"
+	byteAfterPrefix := len("〔倉頡五代〕")
+	if got := compositionCaretRuneIndex(mixed, byteAfterPrefix); got != 6 {
+		t.Fatalf("selection start after CJK prefix: got %d want 6", got)
+	}
+	if got := compositionCaretRuneIndex(mixed, len(mixed)); got != 9 {
+		t.Fatalf("selection end after ASCII lookup code: got %d want 9", got)
+	}
+}
+
+func TestTypeDuckRimeModulesIncludeDictionaryLookup(t *testing.T) {
+	modules := typeDuckRimeModules()
+	if !slices.Contains(modules, "default") {
+		t.Fatalf("expected default module group, got %#v", modules)
+	}
+	if !slices.Contains(modules, "dictionary_lookup") {
+		t.Fatalf("expected dictionary_lookup module for dictionary_lookup_filter, got %#v", modules)
 	}
 }
