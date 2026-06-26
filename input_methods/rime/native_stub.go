@@ -60,20 +60,20 @@ func (b *nativeBackend) ClearComposition()                                      
 func (b *nativeBackend) ProcessKey(req *imecore.Request, translatedKeyCode, modifiers int) bool {
 	return false
 }
-func (b *nativeBackend) State() rimeState                       { return rimeState{} }
-func (b *nativeBackend) SetOption(name string, value bool)      {}
-func (b *nativeBackend) GetOption(name string) bool             { return false }
-func (b *nativeBackend) SaveOptions() []string                  { return nil }
-func (b *nativeBackend) SchemaSwitches() []RimeSwitch           { return nil }
-func (b *nativeBackend) SchemaList() []RimeSchema               { return nil }
-func (b *nativeBackend) CurrentSchemaID() string                { return "" }
-func (b *nativeBackend) SelectSchema(schemaID string) bool      { return false }
-func (b *nativeBackend) SetCandidatePageSize(pageSize int) bool { return false }
-func (b *nativeBackend) SelectCandidate(index int) bool         { return false }
-func (b *nativeBackend) HighlightCandidate(index int) bool      { return false }
-func (b *nativeBackend) ChangePage(backward bool) bool                  { return false }
-func (b *nativeBackend) DeleteCandidateOnCurrentPage(index int) bool      { return false }
-func (b *nativeBackend) Available() bool                                { return false }
+func (b *nativeBackend) State() rimeState                            { return rimeState{} }
+func (b *nativeBackend) SetOption(name string, value bool)           {}
+func (b *nativeBackend) GetOption(name string) bool                  { return false }
+func (b *nativeBackend) SaveOptions() []string                       { return nil }
+func (b *nativeBackend) SchemaSwitches() []RimeSwitch                { return nil }
+func (b *nativeBackend) SchemaList() []RimeSchema                    { return nil }
+func (b *nativeBackend) CurrentSchemaID() string                     { return "" }
+func (b *nativeBackend) SelectSchema(schemaID string) bool           { return false }
+func (b *nativeBackend) SetCandidatePageSize(pageSize int) bool      { return false }
+func (b *nativeBackend) SelectCandidate(index int) bool              { return false }
+func (b *nativeBackend) HighlightCandidate(index int) bool           { return false }
+func (b *nativeBackend) ChangePage(backward bool) bool               { return false }
+func (b *nativeBackend) DeleteCandidateOnCurrentPage(index int) bool { return false }
+func (b *nativeBackend) Available() bool                             { return false }
 
 func (b *nativeBackend) Redeploy(sharedDir, userDir string) bool { return false }
 
@@ -102,6 +102,7 @@ func SelectCandidate(sessionId RimeSessionId, index int) bool      { return fals
 func HighlightCandidate(sessionId RimeSessionId, index int) bool   { return false }
 func ChangePage(sessionId RimeSessionId, backward bool) bool       { return false }
 func DeployConfigFile(filePath, key string) bool                   { return false }
+func CustomizeTypeDuckSettings(prefs typeDuckRimePreferences) bool { return false }
 func StartMaintenance(fullcheck bool) bool                         { return false }
 func JoinMaintenanceThread()                                       {}
 func SyncUserData() bool                                           { return false }
@@ -112,3 +113,6 @@ func RimeInit(datadir, userdir, appname, appver string, fullcheck bool) bool {
 	return false
 }
 func RimeRedeploy(datadir, userdir, appname, appver string) bool { return false }
+func RimeReloadIncremental(datadir, userdir, appname, appver string) bool {
+	return false
+}

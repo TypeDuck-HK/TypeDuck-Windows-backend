@@ -753,6 +753,10 @@ func DeployConfigFile(filePath, key string) bool {
 	return result
 }
 
+func CustomizeTypeDuckSettings(prefs typeDuckRimePreferences) bool {
+	return false
+}
+
 func StartMaintenance(fullcheck bool) bool {
 	return boolResult(C.moqi_rime_start_maintenance(cBool(fullcheck)))
 }
@@ -866,6 +870,32 @@ func RimeRedeploy(datadir, userdir, appname, appver string) bool {
 
 	Finalize()
 	return initializeEngine(traits, true)
+}
+
+func RimeReloadIncremental(datadir, userdir, appname, appver string) bool {
+	logDir := rimeLogDir()
+	if logDir != "" {
+		if err := os.MkdirAll(logDir, 0o755); err != nil {
+			log.Printf("创建 RIME 日志目录失败: %v", err)
+			logDir = ""
+		}
+	}
+
+	traits := RimeTraits{
+		SharedDataDir:        datadir,
+		UserDataDir:          userdir,
+		DistributionName:     "Rime",
+		DistributionCodeName: appname,
+		DistributionVersion:  appver,
+		AppName:              fmt.Sprintf("Rime.%s", appname),
+		Modules:              []string{"default", "lua"},
+		LogDir:               logDir,
+		PrebuiltDataDir:      filepath.Join(datadir, "build"),
+		StagingDir:           filepath.Join(userdir, "build"),
+	}
+
+	Finalize()
+	return initializeEngine(traits, false)
 }
 
 func getContext(sessionId RimeSessionId) (C.RimeContext, bool) {

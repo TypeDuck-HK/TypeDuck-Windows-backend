@@ -130,17 +130,12 @@ func TestPackagedTypeDuckRimeProvidesDictionaryLookupComments(t *testing.T) {
 	if !ok || len(menu.Candidates) == 0 {
 		t.Fatalf("expected candidates for hou, got ok=%t menu=%#v", ok, menu)
 	}
-	items := make([]candidateItem, 0, len(menu.Candidates))
 	for _, candidate := range menu.Candidates {
-		items = append(items, candidateItem{Text: candidate.Text, Comment: candidate.Comment})
-	}
-	items = newTypeDuckLookup(dataDir).enrichCandidates(items)
-	for _, candidate := range items {
 		if candidate.Text == "好" && strings.Contains(candidate.Comment, "\f\r1,好,hou2") {
 			return
 		}
 	}
-	t.Fatalf("expected TypeDuck dictionary lookup rich comment for 好, got %#v", items)
+	t.Fatalf("expected TypeDuck dictionary lookup rich comment for 好, got %#v", menu.Candidates)
 }
 
 func TestRealRimeCanCommitText(t *testing.T) {

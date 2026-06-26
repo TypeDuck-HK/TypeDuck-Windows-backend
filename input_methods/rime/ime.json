@@ -1,10 +1,10 @@
 {
-	"name": "中州韵 (MOQI)",
+	"name": "TypeDuck 粵語輸入法 / TypeDuck Cantonese IME",
 	"version": "0.1",
-	"guid": "{3F6B5A12-8D44-4E71-9A2E-6B4F9C1D2A30}",
-	"locale": "zh-Hans-CN",
-	"fallbackLocale": "zh-CN",
-	"icon": "../../icons/mo.ico",
+	"guid": "{C6E8F5DF-6504-44F9-B7CF-17A195373A83}",
+	"locale": "zh-HK",
+	"fallbackLocale": "zh-HK",
+	"icon": "../../icons/TypeDuck.ico",
 	"win8_icon": "",
 	"moduleName": "rime",
 	"serviceName": "RimeTextService"

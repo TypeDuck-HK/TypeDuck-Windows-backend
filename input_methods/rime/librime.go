@@ -102,6 +102,7 @@ type rimeCompositionC struct {
 type rimeCandidateC struct {
 	Text     *byte
 	Comment  *byte
+	Quality  float64
 	Reserved uintptr
 }
 
@@ -151,6 +152,50 @@ type rimeConfigIteratorC struct {
 	Path  *byte
 }
 
+type rimeModuleC struct {
+	DataSize   int32
+	ModuleName *byte
+	Initialize uintptr
+	Finalize   uintptr
+	GetAPI     uintptr
+}
+
+type rimeLeversApiC struct {
+	DataSize                int32
+	CustomSettingsInit      uintptr
+	CustomSettingsDestroy   uintptr
+	LoadSettings            uintptr
+	SaveSettings            uintptr
+	CustomizeBool           uintptr
+	CustomizeInt            uintptr
+	CustomizeDouble         uintptr
+	CustomizeString         uintptr
+	IsFirstRun              uintptr
+	SettingsIsModified      uintptr
+	SettingsGetConfig       uintptr
+	SwitcherSettingsInit    uintptr
+	GetAvailableSchemaList  uintptr
+	GetSelectedSchemaList   uintptr
+	SchemaListDestroy       uintptr
+	GetSchemaID             uintptr
+	GetSchemaName           uintptr
+	GetSchemaVersion        uintptr
+	GetSchemaAuthor         uintptr
+	GetSchemaDescription    uintptr
+	GetSchemaFilePath       uintptr
+	SelectSchemas           uintptr
+	GetHotkeys              uintptr
+	SetHotkeys              uintptr
+	UserDictIteratorInit    uintptr
+	UserDictIteratorDestroy uintptr
+	NextUserDict            uintptr
+	BackupUserDict          uintptr
+	RestoreUserDict         uintptr
+	ExportUserDict          uintptr
+	ImportUserDict          uintptr
+	CustomizeItem           uintptr
+}
+
 var (
 	rimeDLLMu sync.Mutex
 	rimeDLL   *syscall.LazyDLL
@@ -158,6 +203,7 @@ var (
 		setup                        *syscall.LazyProc
 		initialize                   *syscall.LazyProc
 		finalize                     *syscall.LazyProc
+		findModule                   *syscall.LazyProc
 		startMaintenance             *syscall.LazyProc
 		joinMaintenanceThread        *syscall.LazyProc
 		deployConfigFile             *syscall.LazyProc
@@ -187,12 +233,16 @@ var (
 		configClose                  *syscall.LazyProc
 		configGetCString             *syscall.LazyProc
 		configGetItem                *syscall.LazyProc
+		configInit                   *syscall.LazyProc
 		configBeginMap               *syscall.LazyProc
 		configBeginList              *syscall.LazyProc
+		configCreateList             *syscall.LazyProc
+		configListAppendString       *syscall.LazyProc
 		configNext                   *syscall.LazyProc
 		configEnd                    *syscall.LazyProc
 		configListSize               *syscall.LazyProc
 		configSetInt                 *syscall.LazyProc
+		configSetItem                *syscall.LazyProc
 		getStateLabel                *syscall.LazyProc
 		getStateLabelAbbrev          *syscall.LazyProc
 		getVersion                   *syscall.LazyProc
@@ -215,6 +265,7 @@ func loadRimeDLL(dllPath string) error {
 		setup                        *syscall.LazyProc
 		initialize                   *syscall.LazyProc
 		finalize                     *syscall.LazyProc
+		findModule                   *syscall.LazyProc
 		startMaintenance             *syscall.LazyProc
 		joinMaintenanceThread        *syscall.LazyProc
 		deployConfigFile             *syscall.LazyProc
@@ -244,12 +295,16 @@ func loadRimeDLL(dllPath string) error {
 		configClose                  *syscall.LazyProc
 		configGetCString             *syscall.LazyProc
 		configGetItem                *syscall.LazyProc
+		configInit                   *syscall.LazyProc
 		configBeginMap               *syscall.LazyProc
 		configBeginList              *syscall.LazyProc
+		configCreateList             *syscall.LazyProc
+		configListAppendString       *syscall.LazyProc
 		configNext                   *syscall.LazyProc
 		configEnd                    *syscall.LazyProc
 		configListSize               *syscall.LazyProc
 		configSetInt                 *syscall.LazyProc
+		configSetItem                *syscall.LazyProc
 		getStateLabel                *syscall.LazyProc
 		getStateLabelAbbrev          *syscall.LazyProc
 		getVersion                   *syscall.LazyProc
@@ -257,6 +312,7 @@ func loadRimeDLL(dllPath string) error {
 		setup:                        dll.NewProc("RimeSetup"),
 		initialize:                   dll.NewProc("RimeInitialize"),
 		finalize:                     dll.NewProc("RimeFinalize"),
+		findModule:                   dll.NewProc("RimeFindModule"),
 		startMaintenance:             dll.NewProc("RimeStartMaintenance"),
 		joinMaintenanceThread:        dll.NewProc("RimeJoinMaintenanceThread"),
 		deployConfigFile:             dll.NewProc("RimeDeployConfigFile"),
@@ -286,12 +342,16 @@ func loadRimeDLL(dllPath string) error {
 		configClose:                  dll.NewProc("RimeConfigClose"),
 		configGetCString:             dll.NewProc("RimeConfigGetCString"),
 		configGetItem:                dll.NewProc("RimeConfigGetItem"),
+		configInit:                   dll.NewProc("RimeConfigInit"),
 		configBeginMap:               dll.NewProc("RimeConfigBeginMap"),
 		configBeginList:              dll.NewProc("RimeConfigBeginList"),
+		configCreateList:             dll.NewProc("RimeConfigCreateList"),
+		configListAppendString:       dll.NewProc("RimeConfigListAppendString"),
 		configNext:                   dll.NewProc("RimeConfigNext"),
 		configEnd:                    dll.NewProc("RimeConfigEnd"),
 		configListSize:               dll.NewProc("RimeConfigListSize"),
 		configSetInt:                 dll.NewProc("RimeConfigSetInt"),
+		configSetItem:                dll.NewProc("RimeConfigSetItem"),
 		getStateLabel:                dll.NewProc("RimeGetStateLabel"),
 		getStateLabelAbbrev:          dll.NewProc("RimeGetStateLabelAbbreviated"),
 		getVersion:                   dll.NewProc("RimeGetVersion"),
@@ -317,6 +377,11 @@ func utf8Ptr(s string) *byte {
 	if s == "" {
 		return nil
 	}
+	ptr, _ := syscall.BytePtrFromString(s)
+	return ptr
+}
+
+func utf8PtrAllowEmpty(s string) *byte {
 	ptr, _ := syscall.BytePtrFromString(s)
 	return ptr
 }
@@ -357,7 +422,7 @@ func cStringFromBytes(buf []byte) string {
 }
 
 func typeDuckRimeModules() []string {
-	return []string{"default", "dictionary_lookup"}
+	return []string{"default", "levers", "dictionary_lookup"}
 }
 
 func withRimeTraitsC(traits RimeTraits, call func(*rimeTraitsC) uintptr) uintptr {
@@ -831,6 +896,181 @@ func DeployConfigFile(filePath, key string) bool {
 	return boolResult(r1)
 }
 
+func findLeversAPI() *rimeLeversApiC {
+	if !procAvailable(rimeProcs.findModule) {
+		return nil
+	}
+	cModuleName := utf8Ptr("levers")
+	r1, _, _ := rimeProcs.findModule.Call(uintptr(unsafe.Pointer(cModuleName)))
+	runtime.KeepAlive(cModuleName)
+	if r1 == 0 {
+		return nil
+	}
+	module := (*rimeModuleC)(unsafe.Pointer(r1))
+	if module == nil || module.GetAPI == 0 {
+		return nil
+	}
+	apiPtr, _, _ := syscall.SyscallN(module.GetAPI)
+	if apiPtr == 0 {
+		return nil
+	}
+	return (*rimeLeversApiC)(unsafe.Pointer(apiPtr))
+}
+
+func customSettingsInit(api *rimeLeversApiC, configID, generatorID string) uintptr {
+	if api == nil || api.CustomSettingsInit == 0 {
+		return 0
+	}
+	cConfigID := utf8Ptr(configID)
+	cGeneratorID := utf8Ptr(generatorID)
+	settings, _, _ := syscall.SyscallN(
+		api.CustomSettingsInit,
+		uintptr(unsafe.Pointer(cConfigID)),
+		uintptr(unsafe.Pointer(cGeneratorID)),
+	)
+	runtime.KeepAlive(cConfigID)
+	runtime.KeepAlive(cGeneratorID)
+	return settings
+}
+
+func customSettingsDestroy(api *rimeLeversApiC, settings uintptr) {
+	if api == nil || api.CustomSettingsDestroy == 0 || settings == 0 {
+		return
+	}
+	_, _, _ = syscall.SyscallN(api.CustomSettingsDestroy, settings)
+}
+
+func customizeInt(api *rimeLeversApiC, settings uintptr, key string, value int) bool {
+	if api == nil || api.CustomizeInt == 0 || settings == 0 {
+		return false
+	}
+	cKey := utf8Ptr(key)
+	r1, _, _ := syscall.SyscallN(
+		api.CustomizeInt,
+		settings,
+		uintptr(unsafe.Pointer(cKey)),
+		uintptr(value),
+	)
+	runtime.KeepAlive(cKey)
+	return boolResult(r1)
+}
+
+func saveCustomSettings(api *rimeLeversApiC, settings uintptr) bool {
+	if api == nil || api.SaveSettings == 0 || settings == 0 {
+		return false
+	}
+	r1, _, _ := syscall.SyscallN(api.SaveSettings, settings)
+	return boolResult(r1)
+}
+
+func customizeItem(api *rimeLeversApiC, settings uintptr, key string, config *rimeConfigC) bool {
+	if api == nil || api.CustomizeItem == 0 || settings == 0 || config == nil {
+		return false
+	}
+	cKey := utf8Ptr(key)
+	r1, _, _ := syscall.SyscallN(
+		api.CustomizeItem,
+		settings,
+		uintptr(unsafe.Pointer(cKey)),
+		uintptr(unsafe.Pointer(config)),
+	)
+	runtime.KeepAlive(cKey)
+	return boolResult(r1)
+}
+
+func buildTypeDuckPatchConfig(patches []string) (rimeConfigC, bool) {
+	if !procAvailable(rimeProcs.configInit) ||
+		!procAvailable(rimeProcs.configCreateList) ||
+		!procAvailable(rimeProcs.configListAppendString) ||
+		!procAvailable(rimeProcs.configSetItem) ||
+		!procAvailable(rimeProcs.configClose) {
+		return rimeConfigC{}, false
+	}
+	var config rimeConfigC
+	r1, _, _ := rimeProcs.configInit.Call(uintptr(unsafe.Pointer(&config)))
+	if !boolResult(r1) {
+		return rimeConfigC{}, false
+	}
+	cRoot := utf8PtrAllowEmpty("")
+	r1, _, _ = rimeProcs.configCreateList.Call(
+		uintptr(unsafe.Pointer(&config)),
+		uintptr(unsafe.Pointer(cRoot)),
+	)
+	runtime.KeepAlive(cRoot)
+	if !boolResult(r1) {
+		closeConfig(&config)
+		return rimeConfigC{}, false
+	}
+	for _, patch := range patches {
+		cRoot = utf8PtrAllowEmpty("")
+		cPatch := utf8Ptr(patch)
+		r1, _, _ = rimeProcs.configListAppendString.Call(
+			uintptr(unsafe.Pointer(&config)),
+			uintptr(unsafe.Pointer(cRoot)),
+			uintptr(unsafe.Pointer(cPatch)),
+		)
+		runtime.KeepAlive(cRoot)
+		runtime.KeepAlive(cPatch)
+		if !boolResult(r1) {
+			closeConfig(&config)
+			return rimeConfigC{}, false
+		}
+	}
+	cRoot = utf8PtrAllowEmpty("")
+	r1, _, _ = rimeProcs.configSetItem.Call(
+		uintptr(unsafe.Pointer(&config)),
+		uintptr(unsafe.Pointer(cRoot)),
+		uintptr(unsafe.Pointer(&config)),
+	)
+	runtime.KeepAlive(cRoot)
+	if !boolResult(r1) {
+		closeConfig(&config)
+		return rimeConfigC{}, false
+	}
+	return config, true
+}
+
+func CustomizeTypeDuckSettings(prefs typeDuckRimePreferences) bool {
+	api := findLeversAPI()
+	if api == nil {
+		debugLogf("TypeDuck settings levers failed: levers API unavailable")
+		return false
+	}
+
+	defaultSettings := customSettingsInit(api, "default", APP)
+	if defaultSettings == 0 {
+		debugLogf("TypeDuck settings levers failed: default custom_settings_init")
+		return false
+	}
+	defer customSettingsDestroy(api, defaultSettings)
+
+	commonSettings := customSettingsInit(api, "common", APP)
+	if commonSettings == 0 {
+		debugLogf("TypeDuck settings levers failed: common custom_settings_init")
+		return false
+	}
+	defer customSettingsDestroy(api, commonSettings)
+
+	success := customizeInt(api, defaultSettings, "menu/page_size", prefs.PageSize)
+	debugLogf("TypeDuck settings levers default customize_int success=%t", success)
+	success = saveCustomSettings(api, defaultSettings) && success
+	debugLogf("TypeDuck settings levers default save cumulative=%t", success)
+
+	config, ok := buildTypeDuckPatchConfig(typeDuckCommonPatchList(prefs))
+	if !ok {
+		debugLogf("TypeDuck settings levers failed: build common patch config")
+		return false
+	}
+	defer closeConfig(&config)
+
+	commonCustomizeOK := customizeItem(api, commonSettings, "__patch", &config)
+	debugLogf("TypeDuck settings levers common customize_item success=%t", commonCustomizeOK)
+	success = commonCustomizeOK && success
+	success = saveCustomSettings(api, commonSettings) && success
+	debugLogf("TypeDuck settings levers common save cumulative=%t", success)
+	return success
+}
+
 func StartMaintenance(fullcheck bool) bool {
 	if !procAvailable(rimeProcs.startMaintenance) {
 		return false
@@ -1002,6 +1242,35 @@ func RimeRedeploy(datadir, userdir, appname, appver string) bool {
 		return false
 	}
 	return true
+}
+
+func RimeReloadIncremental(datadir, userdir, appname, appver string) bool {
+	logDir := rimeLogDir()
+	if logDir != "" {
+		if err := os.MkdirAll(logDir, 0o755); err != nil {
+			log.Printf("创建 RIME 日志目录失败: %v", err)
+			logDir = ""
+		}
+	}
+
+	traits := RimeTraits{
+		SharedDataDir:        datadir,
+		UserDataDir:          userdir,
+		DistributionName:     "Rime",
+		DistributionCodeName: appname,
+		DistributionVersion:  appver,
+		AppName:              fmt.Sprintf("Rime.%s", appname),
+		Modules:              typeDuckRimeModules(),
+		LogDir:               logDir,
+		PrebuiltDataDir:      filepath.Join(datadir, "build"),
+		StagingDir:           filepath.Join(userdir, "build"),
+	}
+
+	debugLogf("RIME incremental reload start datadir=%q userdir=%q", datadir, userdir)
+	Finalize()
+	success := initializeEngine(traits, false)
+	debugLogf("RIME incremental reload completed success=%t", success)
+	return success
 }
 
 func getContext(sessionId RimeSessionId) (rimeContextC, bool) {

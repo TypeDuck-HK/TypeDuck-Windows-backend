@@ -245,6 +245,8 @@ func (b *nativeBackend) State() rimeState {
 		}
 		state.Candidates = candidates
 		state.PageNo = menu.PageNo
+		state.PageSize = menu.PageSize
+		state.IsLastPage = menu.IsLastPage
 		state.CandidateCursor = menu.HighlightedCandidateIndex
 		state.SelectKeys = menu.SelectKeys
 	}
