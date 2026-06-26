@@ -39,34 +39,44 @@ func (id FlexibleID) IntValue() int {
 
 // Request Moqi请求结构
 type Request struct {
-	Method            string
-	SeqNum            int
-	ID                FlexibleID
-	IsWindows8Above   bool
-	IsMetroApp        bool
-	IsUiLess          bool
-	IsConsole         bool
-	IsKeyboardOpen    bool
-	Opened            bool
-	Forced            bool
-	CommandType       int
-	CharCode          int
-	KeyCode           int
-	RepeatCount       int
-	ScanCode          int
-	IsExtended        bool
-	KeyStates         KeyStates
-	CompositionString   string
-	CandidateList       []string
-	CandidateIndex      int
-	HasCandidateIndex   bool
-	PageBackward        bool
-	ShowCandidates      bool
-	CursorPos           int
-	SelStart            int
-	SelEnd              int
-	CloudClipboardText  string
-	Data                map[string]interface{}
+	Method             string
+	SeqNum             int
+	ID                 FlexibleID
+	IsWindows8Above    bool
+	IsMetroApp         bool
+	IsUiLess           bool
+	IsConsole          bool
+	IsKeyboardOpen     bool
+	Opened             bool
+	Forced             bool
+	CommandType        int
+	CharCode           int
+	KeyCode            int
+	RepeatCount        int
+	ScanCode           int
+	IsExtended         bool
+	KeyStates          KeyStates
+	CompositionString  string
+	CandidateList      []string
+	CandidateIndex     int
+	HasCandidateIndex  bool
+	PageBackward       bool
+	ShowCandidates     bool
+	CursorPos          int
+	SelStart           int
+	SelEnd             int
+	CloudClipboardText string
+	TypeDuckSettings   *TypeDuckSettingsUpdate
+	Data               map[string]interface{}
+}
+
+type TypeDuckSettingsUpdate struct {
+	PageSize         int
+	EnableCompletion bool
+	EnableCorrection bool
+	EnableSentence   bool
+	EnableLearning   bool
+	IsCangjie5       bool
 }
 
 // ButtonInfo 按钮信息
@@ -121,6 +131,14 @@ type CandidateEntry struct {
 	Comment string
 }
 
+type TypeDuckCandidatePage struct {
+	PageIndex   int
+	PageSize    int
+	TotalCount  int
+	HasPrevious bool
+	HasNext     bool
+}
+
 type AutoPairRule struct {
 	Open  string
 	Close string
@@ -128,34 +146,35 @@ type AutoPairRule struct {
 
 // Response Moqi响应结构
 type Response struct {
-	SeqNum             int
-	Success            bool
-	ReturnValue        int
-	ReturnData         interface{}
-	CompositionString  string
-	CommitString       string
-	CandidateList      []string
-	CandidateEntries   []CandidateEntry
-	ShowCandidates     bool
-	CursorPos          int
-	CompositionCursor  int
-	CandidateCursor    int
-	HasCandidateCursor bool
-	SelStart           int
-	SelEnd             int
-	SetSelKeys         string
-	Message            string
-	Error              string
-	CustomizeUI        map[string]interface{}
-	AddButton          []ButtonInfo
-	RemoveButton       []string
-	ChangeButton       []ButtonInfo
-	ShowMessage        *MessageWindow
-	TrayNotification   *TrayNotification
-	HideMessage        bool
-	OpenKeyboard       bool
-	AddPreservedKey    []PreservedKeyInfo
-	RemovePreservedKey []string
+	SeqNum                int
+	Success               bool
+	ReturnValue           int
+	ReturnData            interface{}
+	CompositionString     string
+	CommitString          string
+	CandidateList         []string
+	CandidateEntries      []CandidateEntry
+	ShowCandidates        bool
+	CursorPos             int
+	CompositionCursor     int
+	CandidateCursor       int
+	HasCandidateCursor    bool
+	SelStart              int
+	SelEnd                int
+	SetSelKeys            string
+	Message               string
+	Error                 string
+	CustomizeUI           map[string]interface{}
+	AddButton             []ButtonInfo
+	RemoveButton          []string
+	ChangeButton          []ButtonInfo
+	ShowMessage           *MessageWindow
+	TrayNotification      *TrayNotification
+	HideMessage           bool
+	OpenKeyboard          bool
+	AddPreservedKey       []PreservedKeyInfo
+	RemovePreservedKey    []string
+	TypeDuckCandidatePage *TypeDuckCandidatePage
 }
 
 func NewResponse(seqNum int, success bool) *Response {
@@ -233,6 +252,30 @@ func ParseProtoRequest(msg *moqipb.ClientRequest) *Request {
 	if text := msg.GetCloudClipboardText(); text != "" {
 		req.CloudClipboardText = text
 	}
+	if update := msg.GetTypeduckSettingsUpdate(); update != nil {
+		settings := TypeDuckSettingsUpdate{}
+		if update.PageSize != nil {
+			settings.PageSize = int(update.GetPageSize())
+		} else if update.CandidatePageSize != nil {
+			settings.PageSize = int(update.GetCandidatePageSize())
+		}
+		if update.EnableCompletion != nil {
+			settings.EnableCompletion = update.GetEnableCompletion()
+		}
+		if update.EnableCorrection != nil {
+			settings.EnableCorrection = update.GetEnableCorrection()
+		}
+		if update.EnableSentence != nil {
+			settings.EnableSentence = update.GetEnableSentence()
+		}
+		if update.EnableLearning != nil {
+			settings.EnableLearning = update.GetEnableLearning()
+		}
+		if update.IsCangjie5 != nil {
+			settings.IsCangjie5 = update.GetIsCangjie5()
+		}
+		req.TypeDuckSettings = &settings
+	}
 
 	return req
 }
@@ -275,6 +318,15 @@ func BuildProtoResponse(clientID string, resp *Response) (*moqipb.ServerResponse
 			Text:    candidate.Text,
 			Comment: candidate.Comment,
 		})
+	}
+	if resp.TypeDuckCandidatePage != nil {
+		msg.TypeduckCandidatePage = &moqipb.TypeDuckCandidatePage{
+			PageIndex:   uint32(maxInt(resp.TypeDuckCandidatePage.PageIndex, 0)),
+			PageSize:    uint32(maxInt(resp.TypeDuckCandidatePage.PageSize, 0)),
+			TotalCount:  uint32(maxInt(resp.TypeDuckCandidatePage.TotalCount, 0)),
+			HasPrevious: resp.TypeDuckCandidatePage.HasPrevious,
+			HasNext:     resp.TypeDuckCandidatePage.HasNext,
+		}
 	}
 	if resp.ShowMessage != nil {
 		msg.ShowMessage = &moqipb.MessageWindow{
@@ -351,6 +403,10 @@ func methodFromProto(method moqipb.Method) string {
 		return "changePage"
 	case moqipb.Method_METHOD_CLOUD_CLIPBOARD_UPLOAD:
 		return "cloudClipboardUpload"
+	case moqipb.Method_METHOD_TYPEDUCK_SETTINGS_UPDATE:
+		return "typeduckSettingsUpdate"
+	case moqipb.Method_METHOD_TYPEDUCK_DEPLOY:
+		return "typeduckDeploy"
 	default:
 		return ""
 	}
@@ -396,6 +452,10 @@ func MethodToProto(method string) moqipb.Method {
 		return moqipb.Method_METHOD_CHANGE_PAGE
 	case "cloudClipboardUpload":
 		return moqipb.Method_METHOD_CLOUD_CLIPBOARD_UPLOAD
+	case "typeduckSettingsUpdate":
+		return moqipb.Method_METHOD_TYPEDUCK_SETTINGS_UPDATE
+	case "typeduckDeploy":
+		return moqipb.Method_METHOD_TYPEDUCK_DEPLOY
 	default:
 		return moqipb.Method_METHOD_UNSPECIFIED
 	}
@@ -659,6 +719,13 @@ func stringPtrOrNil(value string) *string {
 		return nil
 	}
 	return &value
+}
+
+func maxInt(value, minimum int) int {
+	if value < minimum {
+		return minimum
+	}
+	return value
 }
 
 func uint32Ptr(value uint32) *uint32 {

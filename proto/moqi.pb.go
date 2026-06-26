@@ -44,31 +44,35 @@ const (
 	Method_METHOD_SELECT_CANDIDATE           Method = 17
 	Method_METHOD_CHANGE_PAGE                Method = 18
 	Method_METHOD_CLOUD_CLIPBOARD_UPLOAD     Method = 19
+	Method_METHOD_TYPEDUCK_SETTINGS_UPDATE   Method = 101
+	Method_METHOD_TYPEDUCK_DEPLOY            Method = 102
 )
 
 // Enum value maps for Method.
 var (
 	Method_name = map[int32]string{
-		0:  "METHOD_UNSPECIFIED",
-		1:  "METHOD_INIT",
-		2:  "METHOD_CLOSE",
-		3:  "METHOD_ON_ACTIVATE",
-		4:  "METHOD_ON_DEACTIVATE",
-		5:  "METHOD_FILTER_KEY_DOWN",
-		6:  "METHOD_ON_KEY_DOWN",
-		7:  "METHOD_FILTER_KEY_UP",
-		8:  "METHOD_ON_KEY_UP",
-		9:  "METHOD_ON_PRESERVED_KEY",
-		10: "METHOD_ON_COMMAND",
-		11: "METHOD_ON_MENU",
-		12: "METHOD_ON_COMPARTMENT_CHANGED",
-		13: "METHOD_ON_KEYBOARD_STATUS_CHANGED",
-		14: "METHOD_ON_COMPOSITION_TERMINATED",
-		15: "METHOD_ON_LANG_PROFILE_ACTIVATED",
-		16: "METHOD_HIGHLIGHT_CANDIDATE",
-		17: "METHOD_SELECT_CANDIDATE",
-		18: "METHOD_CHANGE_PAGE",
-		19: "METHOD_CLOUD_CLIPBOARD_UPLOAD",
+		0:   "METHOD_UNSPECIFIED",
+		1:   "METHOD_INIT",
+		2:   "METHOD_CLOSE",
+		3:   "METHOD_ON_ACTIVATE",
+		4:   "METHOD_ON_DEACTIVATE",
+		5:   "METHOD_FILTER_KEY_DOWN",
+		6:   "METHOD_ON_KEY_DOWN",
+		7:   "METHOD_FILTER_KEY_UP",
+		8:   "METHOD_ON_KEY_UP",
+		9:   "METHOD_ON_PRESERVED_KEY",
+		10:  "METHOD_ON_COMMAND",
+		11:  "METHOD_ON_MENU",
+		12:  "METHOD_ON_COMPARTMENT_CHANGED",
+		13:  "METHOD_ON_KEYBOARD_STATUS_CHANGED",
+		14:  "METHOD_ON_COMPOSITION_TERMINATED",
+		15:  "METHOD_ON_LANG_PROFILE_ACTIVATED",
+		16:  "METHOD_HIGHLIGHT_CANDIDATE",
+		17:  "METHOD_SELECT_CANDIDATE",
+		18:  "METHOD_CHANGE_PAGE",
+		19:  "METHOD_CLOUD_CLIPBOARD_UPLOAD",
+		101: "METHOD_TYPEDUCK_SETTINGS_UPDATE",
+		102: "METHOD_TYPEDUCK_DEPLOY",
 	}
 	Method_value = map[string]int32{
 		"METHOD_UNSPECIFIED":                0,
@@ -91,6 +95,8 @@ var (
 		"METHOD_SELECT_CANDIDATE":           17,
 		"METHOD_CHANGE_PAGE":                18,
 		"METHOD_CLOUD_CLIPBOARD_UPLOAD":     19,
+		"METHOD_TYPEDUCK_SETTINGS_UPDATE":   101,
+		"METHOD_TYPEDUCK_DEPLOY":            102,
 	}
 )
 
@@ -613,6 +619,82 @@ func (x *CandidateEntry) GetComment() string {
 	return ""
 }
 
+type TypeDuckCandidatePage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PageIndex     uint32                 `protobuf:"varint,1,opt,name=page_index,json=pageIndex,proto3" json:"page_index,omitempty"`
+	PageSize      uint32                 `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	TotalCount    uint32                 `protobuf:"varint,3,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	HasPrevious   bool                   `protobuf:"varint,4,opt,name=has_previous,json=hasPrevious,proto3" json:"has_previous,omitempty"`
+	HasNext       bool                   `protobuf:"varint,5,opt,name=has_next,json=hasNext,proto3" json:"has_next,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TypeDuckCandidatePage) Reset() {
+	*x = TypeDuckCandidatePage{}
+	mi := &file_proto_moqi_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TypeDuckCandidatePage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TypeDuckCandidatePage) ProtoMessage() {}
+
+func (x *TypeDuckCandidatePage) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_moqi_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TypeDuckCandidatePage.ProtoReflect.Descriptor instead.
+func (*TypeDuckCandidatePage) Descriptor() ([]byte, []int) {
+	return file_proto_moqi_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *TypeDuckCandidatePage) GetPageIndex() uint32 {
+	if x != nil {
+		return x.PageIndex
+	}
+	return 0
+}
+
+func (x *TypeDuckCandidatePage) GetPageSize() uint32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *TypeDuckCandidatePage) GetTotalCount() uint32 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
+}
+
+func (x *TypeDuckCandidatePage) GetHasPrevious() bool {
+	if x != nil {
+		return x.HasPrevious
+	}
+	return false
+}
+
+func (x *TypeDuckCandidatePage) GetHasNext() bool {
+	if x != nil {
+		return x.HasNext
+	}
+	return false
+}
+
 type AutoPairRule struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Open          string                 `protobuf:"bytes,1,opt,name=open,proto3" json:"open,omitempty"`
@@ -623,7 +705,7 @@ type AutoPairRule struct {
 
 func (x *AutoPairRule) Reset() {
 	*x = AutoPairRule{}
-	mi := &file_proto_moqi_proto_msgTypes[5]
+	mi := &file_proto_moqi_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -635,7 +717,7 @@ func (x *AutoPairRule) String() string {
 func (*AutoPairRule) ProtoMessage() {}
 
 func (x *AutoPairRule) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_moqi_proto_msgTypes[5]
+	mi := &file_proto_moqi_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -648,7 +730,7 @@ func (x *AutoPairRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AutoPairRule.ProtoReflect.Descriptor instead.
 func (*AutoPairRule) Descriptor() ([]byte, []int) {
-	return file_proto_moqi_proto_rawDescGZIP(), []int{5}
+	return file_proto_moqi_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AutoPairRule) GetOpen() string {
@@ -690,7 +772,7 @@ type CustomizeUi struct {
 
 func (x *CustomizeUi) Reset() {
 	*x = CustomizeUi{}
-	mi := &file_proto_moqi_proto_msgTypes[6]
+	mi := &file_proto_moqi_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -702,7 +784,7 @@ func (x *CustomizeUi) String() string {
 func (*CustomizeUi) ProtoMessage() {}
 
 func (x *CustomizeUi) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_moqi_proto_msgTypes[6]
+	mi := &file_proto_moqi_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -715,7 +797,7 @@ func (x *CustomizeUi) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomizeUi.ProtoReflect.Descriptor instead.
 func (*CustomizeUi) Descriptor() ([]byte, []int) {
-	return file_proto_moqi_proto_rawDescGZIP(), []int{6}
+	return file_proto_moqi_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CustomizeUi) GetCandFontName() string {
@@ -847,7 +929,7 @@ type MessageWindow struct {
 
 func (x *MessageWindow) Reset() {
 	*x = MessageWindow{}
-	mi := &file_proto_moqi_proto_msgTypes[7]
+	mi := &file_proto_moqi_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -859,7 +941,7 @@ func (x *MessageWindow) String() string {
 func (*MessageWindow) ProtoMessage() {}
 
 func (x *MessageWindow) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_moqi_proto_msgTypes[7]
+	mi := &file_proto_moqi_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -872,7 +954,7 @@ func (x *MessageWindow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MessageWindow.ProtoReflect.Descriptor instead.
 func (*MessageWindow) Descriptor() ([]byte, []int) {
-	return file_proto_moqi_proto_rawDescGZIP(), []int{7}
+	return file_proto_moqi_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *MessageWindow) GetMessage() string {
@@ -900,7 +982,7 @@ type TrayNotification struct {
 
 func (x *TrayNotification) Reset() {
 	*x = TrayNotification{}
-	mi := &file_proto_moqi_proto_msgTypes[8]
+	mi := &file_proto_moqi_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -912,7 +994,7 @@ func (x *TrayNotification) String() string {
 func (*TrayNotification) ProtoMessage() {}
 
 func (x *TrayNotification) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_moqi_proto_msgTypes[8]
+	mi := &file_proto_moqi_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -925,7 +1007,7 @@ func (x *TrayNotification) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrayNotification.ProtoReflect.Descriptor instead.
 func (*TrayNotification) Descriptor() ([]byte, []int) {
-	return file_proto_moqi_proto_rawDescGZIP(), []int{8}
+	return file_proto_moqi_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *TrayNotification) GetTitle() string {
@@ -949,41 +1031,275 @@ func (x *TrayNotification) GetIcon() TrayNotificationIcon {
 	return TrayNotificationIcon_TRAY_NOTIFICATION_ICON_UNSPECIFIED
 }
 
+type TypeDuckSettingsUpdate struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Language            *string                `protobuf:"bytes,1,opt,name=language,proto3,oneof" json:"language,omitempty"`
+	SchemaId            *string                `protobuf:"bytes,2,opt,name=schema_id,json=schemaId,proto3,oneof" json:"schema_id,omitempty"`
+	DisplayLanguage     *string                `protobuf:"bytes,3,opt,name=display_language,json=displayLanguage,proto3,oneof" json:"display_language,omitempty"`
+	AsciiMode           *bool                  `protobuf:"varint,4,opt,name=ascii_mode,json=asciiMode,proto3,oneof" json:"ascii_mode,omitempty"`
+	TraditionalHongKong *bool                  `protobuf:"varint,5,opt,name=traditional_hong_kong,json=traditionalHongKong,proto3,oneof" json:"traditional_hong_kong,omitempty"`
+	CandidatePageSize   *uint32                `protobuf:"varint,6,opt,name=candidate_page_size,json=candidatePageSize,proto3,oneof" json:"candidate_page_size,omitempty"`
+	DisplayLanguages    []string               `protobuf:"bytes,20,rep,name=display_languages,json=displayLanguages,proto3" json:"display_languages,omitempty"`
+	MainLanguage        *string                `protobuf:"bytes,21,opt,name=main_language,json=mainLanguage,proto3,oneof" json:"main_language,omitempty"`
+	PageSize            *uint32                `protobuf:"varint,22,opt,name=page_size,json=pageSize,proto3,oneof" json:"page_size,omitempty"`
+	IsHeiTypeface       *bool                  `protobuf:"varint,23,opt,name=is_hei_typeface,json=isHeiTypeface,proto3,oneof" json:"is_hei_typeface,omitempty"`
+	ShowRomanization    *string                `protobuf:"bytes,24,opt,name=show_romanization,json=showRomanization,proto3,oneof" json:"show_romanization,omitempty"`
+	EnableCompletion    *bool                  `protobuf:"varint,25,opt,name=enable_completion,json=enableCompletion,proto3,oneof" json:"enable_completion,omitempty"`
+	EnableCorrection    *bool                  `protobuf:"varint,26,opt,name=enable_correction,json=enableCorrection,proto3,oneof" json:"enable_correction,omitempty"`
+	EnableSentence      *bool                  `protobuf:"varint,27,opt,name=enable_sentence,json=enableSentence,proto3,oneof" json:"enable_sentence,omitempty"`
+	EnableLearning      *bool                  `protobuf:"varint,28,opt,name=enable_learning,json=enableLearning,proto3,oneof" json:"enable_learning,omitempty"`
+	ShowReverseCode     *bool                  `protobuf:"varint,29,opt,name=show_reverse_code,json=showReverseCode,proto3,oneof" json:"show_reverse_code,omitempty"`
+	IsCangjie5          *bool                  `protobuf:"varint,30,opt,name=is_cangjie5,json=isCangjie5,proto3,oneof" json:"is_cangjie5,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *TypeDuckSettingsUpdate) Reset() {
+	*x = TypeDuckSettingsUpdate{}
+	mi := &file_proto_moqi_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TypeDuckSettingsUpdate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TypeDuckSettingsUpdate) ProtoMessage() {}
+
+func (x *TypeDuckSettingsUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_moqi_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TypeDuckSettingsUpdate.ProtoReflect.Descriptor instead.
+func (*TypeDuckSettingsUpdate) Descriptor() ([]byte, []int) {
+	return file_proto_moqi_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *TypeDuckSettingsUpdate) GetLanguage() string {
+	if x != nil && x.Language != nil {
+		return *x.Language
+	}
+	return ""
+}
+
+func (x *TypeDuckSettingsUpdate) GetSchemaId() string {
+	if x != nil && x.SchemaId != nil {
+		return *x.SchemaId
+	}
+	return ""
+}
+
+func (x *TypeDuckSettingsUpdate) GetDisplayLanguage() string {
+	if x != nil && x.DisplayLanguage != nil {
+		return *x.DisplayLanguage
+	}
+	return ""
+}
+
+func (x *TypeDuckSettingsUpdate) GetAsciiMode() bool {
+	if x != nil && x.AsciiMode != nil {
+		return *x.AsciiMode
+	}
+	return false
+}
+
+func (x *TypeDuckSettingsUpdate) GetTraditionalHongKong() bool {
+	if x != nil && x.TraditionalHongKong != nil {
+		return *x.TraditionalHongKong
+	}
+	return false
+}
+
+func (x *TypeDuckSettingsUpdate) GetCandidatePageSize() uint32 {
+	if x != nil && x.CandidatePageSize != nil {
+		return *x.CandidatePageSize
+	}
+	return 0
+}
+
+func (x *TypeDuckSettingsUpdate) GetDisplayLanguages() []string {
+	if x != nil {
+		return x.DisplayLanguages
+	}
+	return nil
+}
+
+func (x *TypeDuckSettingsUpdate) GetMainLanguage() string {
+	if x != nil && x.MainLanguage != nil {
+		return *x.MainLanguage
+	}
+	return ""
+}
+
+func (x *TypeDuckSettingsUpdate) GetPageSize() uint32 {
+	if x != nil && x.PageSize != nil {
+		return *x.PageSize
+	}
+	return 0
+}
+
+func (x *TypeDuckSettingsUpdate) GetIsHeiTypeface() bool {
+	if x != nil && x.IsHeiTypeface != nil {
+		return *x.IsHeiTypeface
+	}
+	return false
+}
+
+func (x *TypeDuckSettingsUpdate) GetShowRomanization() string {
+	if x != nil && x.ShowRomanization != nil {
+		return *x.ShowRomanization
+	}
+	return ""
+}
+
+func (x *TypeDuckSettingsUpdate) GetEnableCompletion() bool {
+	if x != nil && x.EnableCompletion != nil {
+		return *x.EnableCompletion
+	}
+	return false
+}
+
+func (x *TypeDuckSettingsUpdate) GetEnableCorrection() bool {
+	if x != nil && x.EnableCorrection != nil {
+		return *x.EnableCorrection
+	}
+	return false
+}
+
+func (x *TypeDuckSettingsUpdate) GetEnableSentence() bool {
+	if x != nil && x.EnableSentence != nil {
+		return *x.EnableSentence
+	}
+	return false
+}
+
+func (x *TypeDuckSettingsUpdate) GetEnableLearning() bool {
+	if x != nil && x.EnableLearning != nil {
+		return *x.EnableLearning
+	}
+	return false
+}
+
+func (x *TypeDuckSettingsUpdate) GetShowReverseCode() bool {
+	if x != nil && x.ShowReverseCode != nil {
+		return *x.ShowReverseCode
+	}
+	return false
+}
+
+func (x *TypeDuckSettingsUpdate) GetIsCangjie5() bool {
+	if x != nil && x.IsCangjie5 != nil {
+		return *x.IsCangjie5
+	}
+	return false
+}
+
+type TypeDuckDeployRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RuntimePath   string                 `protobuf:"bytes,1,opt,name=runtime_path,json=runtimePath,proto3" json:"runtime_path,omitempty"`
+	SchemaId      string                 `protobuf:"bytes,2,opt,name=schema_id,json=schemaId,proto3" json:"schema_id,omitempty"`
+	Force         bool                   `protobuf:"varint,3,opt,name=force,proto3" json:"force,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TypeDuckDeployRequest) Reset() {
+	*x = TypeDuckDeployRequest{}
+	mi := &file_proto_moqi_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TypeDuckDeployRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TypeDuckDeployRequest) ProtoMessage() {}
+
+func (x *TypeDuckDeployRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_moqi_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TypeDuckDeployRequest.ProtoReflect.Descriptor instead.
+func (*TypeDuckDeployRequest) Descriptor() ([]byte, []int) {
+	return file_proto_moqi_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *TypeDuckDeployRequest) GetRuntimePath() string {
+	if x != nil {
+		return x.RuntimePath
+	}
+	return ""
+}
+
+func (x *TypeDuckDeployRequest) GetSchemaId() string {
+	if x != nil {
+		return x.SchemaId
+	}
+	return ""
+}
+
+func (x *TypeDuckDeployRequest) GetForce() bool {
+	if x != nil {
+		return x.Force
+	}
+	return false
+}
+
 type ClientRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	SeqNum             uint32                 `protobuf:"varint,1,opt,name=seq_num,json=seqNum,proto3" json:"seq_num,omitempty"`
-	Method             Method                 `protobuf:"varint,2,opt,name=method,proto3,enum=moqi.protocol.Method" json:"method,omitempty"`
-	Guid               *string                `protobuf:"bytes,3,opt,name=guid,proto3,oneof" json:"guid,omitempty"`
-	IsWindows8Above    bool                   `protobuf:"varint,4,opt,name=is_windows8_above,json=isWindows8Above,proto3" json:"is_windows8_above,omitempty"`
-	IsMetroApp         bool                   `protobuf:"varint,5,opt,name=is_metro_app,json=isMetroApp,proto3" json:"is_metro_app,omitempty"`
-	IsUiLess           bool                   `protobuf:"varint,6,opt,name=is_ui_less,json=isUiLess,proto3" json:"is_ui_less,omitempty"`
-	IsConsole          bool                   `protobuf:"varint,7,opt,name=is_console,json=isConsole,proto3" json:"is_console,omitempty"`
-	Opened             bool                   `protobuf:"varint,8,opt,name=opened,proto3" json:"opened,omitempty"`
-	Forced             bool                   `protobuf:"varint,9,opt,name=forced,proto3" json:"forced,omitempty"`
-	CommandType        uint32                 `protobuf:"varint,10,opt,name=command_type,json=commandType,proto3" json:"command_type,omitempty"`
-	KeyEvent           *KeyEvent              `protobuf:"bytes,11,opt,name=key_event,json=keyEvent,proto3" json:"key_event,omitempty"`
-	CompositionString  string                 `protobuf:"bytes,12,opt,name=composition_string,json=compositionString,proto3" json:"composition_string,omitempty"`
-	CandidateList      []string               `protobuf:"bytes,13,rep,name=candidate_list,json=candidateList,proto3" json:"candidate_list,omitempty"`
-	ShowCandidates     bool                   `protobuf:"varint,14,opt,name=show_candidates,json=showCandidates,proto3" json:"show_candidates,omitempty"`
-	CursorPos          int32                  `protobuf:"varint,15,opt,name=cursor_pos,json=cursorPos,proto3" json:"cursor_pos,omitempty"`
-	SelStart           int32                  `protobuf:"varint,16,opt,name=sel_start,json=selStart,proto3" json:"sel_start,omitempty"`
-	SelEnd             int32                  `protobuf:"varint,17,opt,name=sel_end,json=selEnd,proto3" json:"sel_end,omitempty"`
-	ButtonId           *string                `protobuf:"bytes,18,opt,name=button_id,json=buttonId,proto3,oneof" json:"button_id,omitempty"`
-	CommandId          *uint32                `protobuf:"varint,19,opt,name=command_id,json=commandId,proto3,oneof" json:"command_id,omitempty"`
-	PreservedKeyGuid   *string                `protobuf:"bytes,20,opt,name=preserved_key_guid,json=preservedKeyGuid,proto3,oneof" json:"preserved_key_guid,omitempty"`
-	CompartmentGuid    *string                `protobuf:"bytes,21,opt,name=compartment_guid,json=compartmentGuid,proto3,oneof" json:"compartment_guid,omitempty"`
-	IsKeyboardOpen     bool                   `protobuf:"varint,22,opt,name=is_keyboard_open,json=isKeyboardOpen,proto3" json:"is_keyboard_open,omitempty"`
-	ClientId           *string                `protobuf:"bytes,23,opt,name=client_id,json=clientId,proto3,oneof" json:"client_id,omitempty"`
-	CandidateIndex     *int32                 `protobuf:"varint,24,opt,name=candidate_index,json=candidateIndex,proto3,oneof" json:"candidate_index,omitempty"`
-	PageBackward       *bool                  `protobuf:"varint,25,opt,name=page_backward,json=pageBackward,proto3,oneof" json:"page_backward,omitempty"`
-	CloudClipboardText *string                `protobuf:"bytes,26,opt,name=cloud_clipboard_text,json=cloudClipboardText,proto3,oneof" json:"cloud_clipboard_text,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state                  protoimpl.MessageState  `protogen:"open.v1"`
+	SeqNum                 uint32                  `protobuf:"varint,1,opt,name=seq_num,json=seqNum,proto3" json:"seq_num,omitempty"`
+	Method                 Method                  `protobuf:"varint,2,opt,name=method,proto3,enum=moqi.protocol.Method" json:"method,omitempty"`
+	Guid                   *string                 `protobuf:"bytes,3,opt,name=guid,proto3,oneof" json:"guid,omitempty"`
+	IsWindows8Above        bool                    `protobuf:"varint,4,opt,name=is_windows8_above,json=isWindows8Above,proto3" json:"is_windows8_above,omitempty"`
+	IsMetroApp             bool                    `protobuf:"varint,5,opt,name=is_metro_app,json=isMetroApp,proto3" json:"is_metro_app,omitempty"`
+	IsUiLess               bool                    `protobuf:"varint,6,opt,name=is_ui_less,json=isUiLess,proto3" json:"is_ui_less,omitempty"`
+	IsConsole              bool                    `protobuf:"varint,7,opt,name=is_console,json=isConsole,proto3" json:"is_console,omitempty"`
+	Opened                 bool                    `protobuf:"varint,8,opt,name=opened,proto3" json:"opened,omitempty"`
+	Forced                 bool                    `protobuf:"varint,9,opt,name=forced,proto3" json:"forced,omitempty"`
+	CommandType            uint32                  `protobuf:"varint,10,opt,name=command_type,json=commandType,proto3" json:"command_type,omitempty"`
+	KeyEvent               *KeyEvent               `protobuf:"bytes,11,opt,name=key_event,json=keyEvent,proto3" json:"key_event,omitempty"`
+	CompositionString      string                  `protobuf:"bytes,12,opt,name=composition_string,json=compositionString,proto3" json:"composition_string,omitempty"`
+	CandidateList          []string                `protobuf:"bytes,13,rep,name=candidate_list,json=candidateList,proto3" json:"candidate_list,omitempty"`
+	ShowCandidates         bool                    `protobuf:"varint,14,opt,name=show_candidates,json=showCandidates,proto3" json:"show_candidates,omitempty"`
+	CursorPos              int32                   `protobuf:"varint,15,opt,name=cursor_pos,json=cursorPos,proto3" json:"cursor_pos,omitempty"`
+	SelStart               int32                   `protobuf:"varint,16,opt,name=sel_start,json=selStart,proto3" json:"sel_start,omitempty"`
+	SelEnd                 int32                   `protobuf:"varint,17,opt,name=sel_end,json=selEnd,proto3" json:"sel_end,omitempty"`
+	ButtonId               *string                 `protobuf:"bytes,18,opt,name=button_id,json=buttonId,proto3,oneof" json:"button_id,omitempty"`
+	CommandId              *uint32                 `protobuf:"varint,19,opt,name=command_id,json=commandId,proto3,oneof" json:"command_id,omitempty"`
+	PreservedKeyGuid       *string                 `protobuf:"bytes,20,opt,name=preserved_key_guid,json=preservedKeyGuid,proto3,oneof" json:"preserved_key_guid,omitempty"`
+	CompartmentGuid        *string                 `protobuf:"bytes,21,opt,name=compartment_guid,json=compartmentGuid,proto3,oneof" json:"compartment_guid,omitempty"`
+	IsKeyboardOpen         bool                    `protobuf:"varint,22,opt,name=is_keyboard_open,json=isKeyboardOpen,proto3" json:"is_keyboard_open,omitempty"`
+	ClientId               *string                 `protobuf:"bytes,23,opt,name=client_id,json=clientId,proto3,oneof" json:"client_id,omitempty"`
+	CandidateIndex         *int32                  `protobuf:"varint,24,opt,name=candidate_index,json=candidateIndex,proto3,oneof" json:"candidate_index,omitempty"`
+	PageBackward           *bool                   `protobuf:"varint,25,opt,name=page_backward,json=pageBackward,proto3,oneof" json:"page_backward,omitempty"`
+	CloudClipboardText     *string                 `protobuf:"bytes,26,opt,name=cloud_clipboard_text,json=cloudClipboardText,proto3,oneof" json:"cloud_clipboard_text,omitempty"`
+	TypeduckSettingsUpdate *TypeDuckSettingsUpdate `protobuf:"bytes,29,opt,name=typeduck_settings_update,json=typeduckSettingsUpdate,proto3,oneof" json:"typeduck_settings_update,omitempty"`
+	TypeduckDeployRequest  *TypeDuckDeployRequest  `protobuf:"bytes,30,opt,name=typeduck_deploy_request,json=typeduckDeployRequest,proto3,oneof" json:"typeduck_deploy_request,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ClientRequest) Reset() {
 	*x = ClientRequest{}
-	mi := &file_proto_moqi_proto_msgTypes[9]
+	mi := &file_proto_moqi_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -995,7 +1311,7 @@ func (x *ClientRequest) String() string {
 func (*ClientRequest) ProtoMessage() {}
 
 func (x *ClientRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_moqi_proto_msgTypes[9]
+	mi := &file_proto_moqi_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1008,7 +1324,7 @@ func (x *ClientRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientRequest.ProtoReflect.Descriptor instead.
 func (*ClientRequest) Descriptor() ([]byte, []int) {
-	return file_proto_moqi_proto_rawDescGZIP(), []int{9}
+	return file_proto_moqi_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ClientRequest) GetSeqNum() uint32 {
@@ -1193,42 +1509,58 @@ func (x *ClientRequest) GetCloudClipboardText() string {
 	return ""
 }
 
+func (x *ClientRequest) GetTypeduckSettingsUpdate() *TypeDuckSettingsUpdate {
+	if x != nil {
+		return x.TypeduckSettingsUpdate
+	}
+	return nil
+}
+
+func (x *ClientRequest) GetTypeduckDeployRequest() *TypeDuckDeployRequest {
+	if x != nil {
+		return x.TypeduckDeployRequest
+	}
+	return nil
+}
+
 type ServerResponse struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	ClientId           *string                `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3,oneof" json:"client_id,omitempty"`
-	SeqNum             uint32                 `protobuf:"varint,2,opt,name=seq_num,json=seqNum,proto3" json:"seq_num,omitempty"`
-	Success            bool                   `protobuf:"varint,3,opt,name=success,proto3" json:"success,omitempty"`
-	ReturnValue        int32                  `protobuf:"varint,4,opt,name=return_value,json=returnValue,proto3" json:"return_value,omitempty"`
-	MenuItems          []*MenuItem            `protobuf:"bytes,5,rep,name=menu_items,json=menuItems,proto3" json:"menu_items,omitempty"`
-	CompositionString  string                 `protobuf:"bytes,6,opt,name=composition_string,json=compositionString,proto3" json:"composition_string,omitempty"`
-	CommitString       string                 `protobuf:"bytes,7,opt,name=commit_string,json=commitString,proto3" json:"commit_string,omitempty"`
-	CandidateList      []string               `protobuf:"bytes,8,rep,name=candidate_list,json=candidateList,proto3" json:"candidate_list,omitempty"`
-	ShowCandidates     bool                   `protobuf:"varint,9,opt,name=show_candidates,json=showCandidates,proto3" json:"show_candidates,omitempty"`
-	CursorPos          int32                  `protobuf:"varint,10,opt,name=cursor_pos,json=cursorPos,proto3" json:"cursor_pos,omitempty"`
-	CompositionCursor  int32                  `protobuf:"varint,11,opt,name=composition_cursor,json=compositionCursor,proto3" json:"composition_cursor,omitempty"`
-	CandidateCursor    *int32                 `protobuf:"varint,12,opt,name=candidate_cursor,json=candidateCursor,proto3,oneof" json:"candidate_cursor,omitempty"`
-	SelStart           int32                  `protobuf:"varint,13,opt,name=sel_start,json=selStart,proto3" json:"sel_start,omitempty"`
-	SelEnd             int32                  `protobuf:"varint,14,opt,name=sel_end,json=selEnd,proto3" json:"sel_end,omitempty"`
-	SetSelKeys         string                 `protobuf:"bytes,15,opt,name=set_sel_keys,json=setSelKeys,proto3" json:"set_sel_keys,omitempty"`
-	CustomizeUi        *CustomizeUi           `protobuf:"bytes,16,opt,name=customize_ui,json=customizeUi,proto3,oneof" json:"customize_ui,omitempty"`
-	AddButton          []*ButtonInfo          `protobuf:"bytes,17,rep,name=add_button,json=addButton,proto3" json:"add_button,omitempty"`
-	RemoveButton       []string               `protobuf:"bytes,18,rep,name=remove_button,json=removeButton,proto3" json:"remove_button,omitempty"`
-	ChangeButton       []*ButtonInfo          `protobuf:"bytes,19,rep,name=change_button,json=changeButton,proto3" json:"change_button,omitempty"`
-	ShowMessage        *MessageWindow         `protobuf:"bytes,20,opt,name=show_message,json=showMessage,proto3,oneof" json:"show_message,omitempty"`
-	HideMessage        bool                   `protobuf:"varint,21,opt,name=hide_message,json=hideMessage,proto3" json:"hide_message,omitempty"`
-	OpenKeyboard       bool                   `protobuf:"varint,22,opt,name=open_keyboard,json=openKeyboard,proto3" json:"open_keyboard,omitempty"`
-	AddPreservedKey    []*PreservedKey        `protobuf:"bytes,23,rep,name=add_preserved_key,json=addPreservedKey,proto3" json:"add_preserved_key,omitempty"`
-	RemovePreservedKey []string               `protobuf:"bytes,24,rep,name=remove_preserved_key,json=removePreservedKey,proto3" json:"remove_preserved_key,omitempty"`
-	Error              string                 `protobuf:"bytes,25,opt,name=error,proto3" json:"error,omitempty"`
-	TrayNotification   *TrayNotification      `protobuf:"bytes,26,opt,name=tray_notification,json=trayNotification,proto3,oneof" json:"tray_notification,omitempty"`
-	CandidateEntries   []*CandidateEntry      `protobuf:"bytes,27,rep,name=candidate_entries,json=candidateEntries,proto3" json:"candidate_entries,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state                  protoimpl.MessageState  `protogen:"open.v1"`
+	ClientId               *string                 `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3,oneof" json:"client_id,omitempty"`
+	SeqNum                 uint32                  `protobuf:"varint,2,opt,name=seq_num,json=seqNum,proto3" json:"seq_num,omitempty"`
+	Success                bool                    `protobuf:"varint,3,opt,name=success,proto3" json:"success,omitempty"`
+	ReturnValue            int32                   `protobuf:"varint,4,opt,name=return_value,json=returnValue,proto3" json:"return_value,omitempty"`
+	MenuItems              []*MenuItem             `protobuf:"bytes,5,rep,name=menu_items,json=menuItems,proto3" json:"menu_items,omitempty"`
+	CompositionString      string                  `protobuf:"bytes,6,opt,name=composition_string,json=compositionString,proto3" json:"composition_string,omitempty"`
+	CommitString           string                  `protobuf:"bytes,7,opt,name=commit_string,json=commitString,proto3" json:"commit_string,omitempty"`
+	CandidateList          []string                `protobuf:"bytes,8,rep,name=candidate_list,json=candidateList,proto3" json:"candidate_list,omitempty"`
+	ShowCandidates         bool                    `protobuf:"varint,9,opt,name=show_candidates,json=showCandidates,proto3" json:"show_candidates,omitempty"`
+	CursorPos              int32                   `protobuf:"varint,10,opt,name=cursor_pos,json=cursorPos,proto3" json:"cursor_pos,omitempty"`
+	CompositionCursor      int32                   `protobuf:"varint,11,opt,name=composition_cursor,json=compositionCursor,proto3" json:"composition_cursor,omitempty"`
+	CandidateCursor        *int32                  `protobuf:"varint,12,opt,name=candidate_cursor,json=candidateCursor,proto3,oneof" json:"candidate_cursor,omitempty"`
+	SelStart               int32                   `protobuf:"varint,13,opt,name=sel_start,json=selStart,proto3" json:"sel_start,omitempty"`
+	SelEnd                 int32                   `protobuf:"varint,14,opt,name=sel_end,json=selEnd,proto3" json:"sel_end,omitempty"`
+	SetSelKeys             string                  `protobuf:"bytes,15,opt,name=set_sel_keys,json=setSelKeys,proto3" json:"set_sel_keys,omitempty"`
+	CustomizeUi            *CustomizeUi            `protobuf:"bytes,16,opt,name=customize_ui,json=customizeUi,proto3,oneof" json:"customize_ui,omitempty"`
+	AddButton              []*ButtonInfo           `protobuf:"bytes,17,rep,name=add_button,json=addButton,proto3" json:"add_button,omitempty"`
+	RemoveButton           []string                `protobuf:"bytes,18,rep,name=remove_button,json=removeButton,proto3" json:"remove_button,omitempty"`
+	ChangeButton           []*ButtonInfo           `protobuf:"bytes,19,rep,name=change_button,json=changeButton,proto3" json:"change_button,omitempty"`
+	ShowMessage            *MessageWindow          `protobuf:"bytes,20,opt,name=show_message,json=showMessage,proto3,oneof" json:"show_message,omitempty"`
+	HideMessage            bool                    `protobuf:"varint,21,opt,name=hide_message,json=hideMessage,proto3" json:"hide_message,omitempty"`
+	OpenKeyboard           bool                    `protobuf:"varint,22,opt,name=open_keyboard,json=openKeyboard,proto3" json:"open_keyboard,omitempty"`
+	AddPreservedKey        []*PreservedKey         `protobuf:"bytes,23,rep,name=add_preserved_key,json=addPreservedKey,proto3" json:"add_preserved_key,omitempty"`
+	RemovePreservedKey     []string                `protobuf:"bytes,24,rep,name=remove_preserved_key,json=removePreservedKey,proto3" json:"remove_preserved_key,omitempty"`
+	Error                  string                  `protobuf:"bytes,25,opt,name=error,proto3" json:"error,omitempty"`
+	TrayNotification       *TrayNotification       `protobuf:"bytes,26,opt,name=tray_notification,json=trayNotification,proto3,oneof" json:"tray_notification,omitempty"`
+	CandidateEntries       []*CandidateEntry       `protobuf:"bytes,27,rep,name=candidate_entries,json=candidateEntries,proto3" json:"candidate_entries,omitempty"`
+	TypeduckCandidatePage  *TypeDuckCandidatePage  `protobuf:"bytes,29,opt,name=typeduck_candidate_page,json=typeduckCandidatePage,proto3,oneof" json:"typeduck_candidate_page,omitempty"`
+	TypeduckSettingsUpdate *TypeDuckSettingsUpdate `protobuf:"bytes,31,opt,name=typeduck_settings_update,json=typeduckSettingsUpdate,proto3,oneof" json:"typeduck_settings_update,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ServerResponse) Reset() {
 	*x = ServerResponse{}
-	mi := &file_proto_moqi_proto_msgTypes[10]
+	mi := &file_proto_moqi_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1240,7 +1572,7 @@ func (x *ServerResponse) String() string {
 func (*ServerResponse) ProtoMessage() {}
 
 func (x *ServerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_moqi_proto_msgTypes[10]
+	mi := &file_proto_moqi_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1253,7 +1585,7 @@ func (x *ServerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerResponse.ProtoReflect.Descriptor instead.
 func (*ServerResponse) Descriptor() ([]byte, []int) {
-	return file_proto_moqi_proto_rawDescGZIP(), []int{10}
+	return file_proto_moqi_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ServerResponse) GetClientId() string {
@@ -1445,6 +1777,20 @@ func (x *ServerResponse) GetCandidateEntries() []*CandidateEntry {
 	return nil
 }
 
+func (x *ServerResponse) GetTypeduckCandidatePage() *TypeDuckCandidatePage {
+	if x != nil {
+		return x.TypeduckCandidatePage
+	}
+	return nil
+}
+
+func (x *ServerResponse) GetTypeduckSettingsUpdate() *TypeDuckSettingsUpdate {
+	if x != nil {
+		return x.TypeduckSettingsUpdate
+	}
+	return nil
+}
+
 var File_proto_moqi_proto protoreflect.FileDescriptor
 
 const file_proto_moqi_proto_rawDesc = "" +
@@ -1485,7 +1831,15 @@ const file_proto_moqi_proto_rawDesc = "" +
 	"\x04guid\x18\x03 \x01(\tR\x04guid\">\n" +
 	"\x0eCandidateEntry\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x18\n" +
-	"\acomment\x18\x02 \x01(\tR\acomment\"8\n" +
+	"\acomment\x18\x02 \x01(\tR\acomment\"\xb2\x01\n" +
+	"\x15TypeDuckCandidatePage\x12\x1d\n" +
+	"\n" +
+	"page_index\x18\x01 \x01(\rR\tpageIndex\x12\x1b\n" +
+	"\tpage_size\x18\x02 \x01(\rR\bpageSize\x12\x1f\n" +
+	"\vtotal_count\x18\x03 \x01(\rR\n" +
+	"totalCount\x12!\n" +
+	"\fhas_previous\x18\x04 \x01(\bR\vhasPrevious\x12\x19\n" +
+	"\bhas_next\x18\x05 \x01(\bR\ahasNext\"8\n" +
 	"\fAutoPairRule\x12\x12\n" +
 	"\x04open\x18\x01 \x01(\tR\x04open\x12\x14\n" +
 	"\x05close\x18\x02 \x01(\tR\x05close\"\xf9\t\n" +
@@ -1532,7 +1886,51 @@ const file_proto_moqi_proto_rawDesc = "" +
 	"\x10TrayNotification\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x127\n" +
-	"\x04icon\x18\x03 \x01(\x0e2#.moqi.protocol.TrayNotificationIconR\x04icon\"\xfb\b\n" +
+	"\x04icon\x18\x03 \x01(\x0e2#.moqi.protocol.TrayNotificationIconR\x04icon\"\xc1\b\n" +
+	"\x16TypeDuckSettingsUpdate\x12\x1f\n" +
+	"\blanguage\x18\x01 \x01(\tH\x00R\blanguage\x88\x01\x01\x12 \n" +
+	"\tschema_id\x18\x02 \x01(\tH\x01R\bschemaId\x88\x01\x01\x12.\n" +
+	"\x10display_language\x18\x03 \x01(\tH\x02R\x0fdisplayLanguage\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"ascii_mode\x18\x04 \x01(\bH\x03R\tasciiMode\x88\x01\x01\x127\n" +
+	"\x15traditional_hong_kong\x18\x05 \x01(\bH\x04R\x13traditionalHongKong\x88\x01\x01\x123\n" +
+	"\x13candidate_page_size\x18\x06 \x01(\rH\x05R\x11candidatePageSize\x88\x01\x01\x12+\n" +
+	"\x11display_languages\x18\x14 \x03(\tR\x10displayLanguages\x12(\n" +
+	"\rmain_language\x18\x15 \x01(\tH\x06R\fmainLanguage\x88\x01\x01\x12 \n" +
+	"\tpage_size\x18\x16 \x01(\rH\aR\bpageSize\x88\x01\x01\x12+\n" +
+	"\x0fis_hei_typeface\x18\x17 \x01(\bH\bR\risHeiTypeface\x88\x01\x01\x120\n" +
+	"\x11show_romanization\x18\x18 \x01(\tH\tR\x10showRomanization\x88\x01\x01\x120\n" +
+	"\x11enable_completion\x18\x19 \x01(\bH\n" +
+	"R\x10enableCompletion\x88\x01\x01\x120\n" +
+	"\x11enable_correction\x18\x1a \x01(\bH\vR\x10enableCorrection\x88\x01\x01\x12,\n" +
+	"\x0fenable_sentence\x18\x1b \x01(\bH\fR\x0eenableSentence\x88\x01\x01\x12,\n" +
+	"\x0fenable_learning\x18\x1c \x01(\bH\rR\x0eenableLearning\x88\x01\x01\x12/\n" +
+	"\x11show_reverse_code\x18\x1d \x01(\bH\x0eR\x0fshowReverseCode\x88\x01\x01\x12$\n" +
+	"\vis_cangjie5\x18\x1e \x01(\bH\x0fR\n" +
+	"isCangjie5\x88\x01\x01B\v\n" +
+	"\t_languageB\f\n" +
+	"\n" +
+	"_schema_idB\x13\n" +
+	"\x11_display_languageB\r\n" +
+	"\v_ascii_modeB\x18\n" +
+	"\x16_traditional_hong_kongB\x16\n" +
+	"\x14_candidate_page_sizeB\x10\n" +
+	"\x0e_main_languageB\f\n" +
+	"\n" +
+	"_page_sizeB\x12\n" +
+	"\x10_is_hei_typefaceB\x14\n" +
+	"\x12_show_romanizationB\x14\n" +
+	"\x12_enable_completionB\x14\n" +
+	"\x12_enable_correctionB\x12\n" +
+	"\x10_enable_sentenceB\x12\n" +
+	"\x10_enable_learningB\x14\n" +
+	"\x12_show_reverse_codeB\x0e\n" +
+	"\f_is_cangjie5\"m\n" +
+	"\x15TypeDuckDeployRequest\x12!\n" +
+	"\fruntime_path\x18\x01 \x01(\tR\vruntimePath\x12\x1b\n" +
+	"\tschema_id\x18\x02 \x01(\tR\bschemaId\x12\x14\n" +
+	"\x05force\x18\x03 \x01(\bR\x05force\"\xfd\n" +
+	"\n" +
 	"\rClientRequest\x12\x17\n" +
 	"\aseq_num\x18\x01 \x01(\rR\x06seqNum\x12-\n" +
 	"\x06method\x18\x02 \x01(\x0e2\x15.moqi.protocol.MethodR\x06method\x12\x17\n" +
@@ -1565,7 +1963,10 @@ const file_proto_moqi_proto_rawDesc = "" +
 	"\tclient_id\x18\x17 \x01(\tH\x05R\bclientId\x88\x01\x01\x12,\n" +
 	"\x0fcandidate_index\x18\x18 \x01(\x05H\x06R\x0ecandidateIndex\x88\x01\x01\x12(\n" +
 	"\rpage_backward\x18\x19 \x01(\bH\aR\fpageBackward\x88\x01\x01\x125\n" +
-	"\x14cloud_clipboard_text\x18\x1a \x01(\tH\bR\x12cloudClipboardText\x88\x01\x01B\a\n" +
+	"\x14cloud_clipboard_text\x18\x1a \x01(\tH\bR\x12cloudClipboardText\x88\x01\x01\x12d\n" +
+	"\x18typeduck_settings_update\x18\x1d \x01(\v2%.moqi.protocol.TypeDuckSettingsUpdateH\tR\x16typeduckSettingsUpdate\x88\x01\x01\x12a\n" +
+	"\x17typeduck_deploy_request\x18\x1e \x01(\v2$.moqi.protocol.TypeDuckDeployRequestH\n" +
+	"R\x15typeduckDeployRequest\x88\x01\x01B\a\n" +
 	"\x05_guidB\f\n" +
 	"\n" +
 	"_button_idB\r\n" +
@@ -1576,8 +1977,9 @@ const file_proto_moqi_proto_rawDesc = "" +
 	"_client_idB\x12\n" +
 	"\x10_candidate_indexB\x10\n" +
 	"\x0e_page_backwardB\x17\n" +
-	"\x15_cloud_clipboard_text\"\xb6\n" +
-	"\n" +
+	"\x15_cloud_clipboard_textB\x1b\n" +
+	"\x19_typeduck_settings_updateB\x1a\n" +
+	"\x18_typeduck_deploy_request\"\xb8\f\n" +
 	"\x0eServerResponse\x12 \n" +
 	"\tclient_id\x18\x01 \x01(\tH\x00R\bclientId\x88\x01\x01\x12\x17\n" +
 	"\aseq_num\x18\x02 \x01(\rR\x06seqNum\x12\x18\n" +
@@ -1610,13 +2012,17 @@ const file_proto_moqi_proto_rawDesc = "" +
 	"\x14remove_preserved_key\x18\x18 \x03(\tR\x12removePreservedKey\x12\x14\n" +
 	"\x05error\x18\x19 \x01(\tR\x05error\x12Q\n" +
 	"\x11tray_notification\x18\x1a \x01(\v2\x1f.moqi.protocol.TrayNotificationH\x04R\x10trayNotification\x88\x01\x01\x12J\n" +
-	"\x11candidate_entries\x18\x1b \x03(\v2\x1d.moqi.protocol.CandidateEntryR\x10candidateEntriesB\f\n" +
+	"\x11candidate_entries\x18\x1b \x03(\v2\x1d.moqi.protocol.CandidateEntryR\x10candidateEntries\x12a\n" +
+	"\x17typeduck_candidate_page\x18\x1d \x01(\v2$.moqi.protocol.TypeDuckCandidatePageH\x05R\x15typeduckCandidatePage\x88\x01\x01\x12d\n" +
+	"\x18typeduck_settings_update\x18\x1f \x01(\v2%.moqi.protocol.TypeDuckSettingsUpdateH\x06R\x16typeduckSettingsUpdate\x88\x01\x01B\f\n" +
 	"\n" +
 	"_client_idB\x13\n" +
 	"\x11_candidate_cursorB\x0f\n" +
 	"\r_customize_uiB\x0f\n" +
 	"\r_show_messageB\x14\n" +
-	"\x12_tray_notification*\xaf\x04\n" +
+	"\x12_tray_notificationB\x1a\n" +
+	"\x18_typeduck_candidate_pageB\x1b\n" +
+	"\x19_typeduck_settings_update*\xf0\x04\n" +
 	"\x06Method\x12\x16\n" +
 	"\x12METHOD_UNSPECIFIED\x10\x00\x12\x0f\n" +
 	"\vMETHOD_INIT\x10\x01\x12\x10\n" +
@@ -1638,7 +2044,9 @@ const file_proto_moqi_proto_rawDesc = "" +
 	"\x1aMETHOD_HIGHLIGHT_CANDIDATE\x10\x10\x12\x1b\n" +
 	"\x17METHOD_SELECT_CANDIDATE\x10\x11\x12\x16\n" +
 	"\x12METHOD_CHANGE_PAGE\x10\x12\x12!\n" +
-	"\x1dMETHOD_CLOUD_CLIPBOARD_UPLOAD\x10\x13*o\n" +
+	"\x1dMETHOD_CLOUD_CLIPBOARD_UPLOAD\x10\x13\x12#\n" +
+	"\x1fMETHOD_TYPEDUCK_SETTINGS_UPDATE\x10e\x12\x1a\n" +
+	"\x16METHOD_TYPEDUCK_DEPLOY\x10f*o\n" +
 	"\n" +
 	"ButtonType\x12\x1b\n" +
 	"\x17BUTTON_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
@@ -1664,43 +2072,50 @@ func file_proto_moqi_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_moqi_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_proto_moqi_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_proto_moqi_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_proto_moqi_proto_goTypes = []any{
-	(Method)(0),               // 0: moqi.protocol.Method
-	(ButtonType)(0),           // 1: moqi.protocol.ButtonType
-	(TrayNotificationIcon)(0), // 2: moqi.protocol.TrayNotificationIcon
-	(*KeyEvent)(nil),          // 3: moqi.protocol.KeyEvent
-	(*ButtonInfo)(nil),        // 4: moqi.protocol.ButtonInfo
-	(*MenuItem)(nil),          // 5: moqi.protocol.MenuItem
-	(*PreservedKey)(nil),      // 6: moqi.protocol.PreservedKey
-	(*CandidateEntry)(nil),    // 7: moqi.protocol.CandidateEntry
-	(*AutoPairRule)(nil),      // 8: moqi.protocol.AutoPairRule
-	(*CustomizeUi)(nil),       // 9: moqi.protocol.CustomizeUi
-	(*MessageWindow)(nil),     // 10: moqi.protocol.MessageWindow
-	(*TrayNotification)(nil),  // 11: moqi.protocol.TrayNotification
-	(*ClientRequest)(nil),     // 12: moqi.protocol.ClientRequest
-	(*ServerResponse)(nil),    // 13: moqi.protocol.ServerResponse
+	(Method)(0),                    // 0: moqi.protocol.Method
+	(ButtonType)(0),                // 1: moqi.protocol.ButtonType
+	(TrayNotificationIcon)(0),      // 2: moqi.protocol.TrayNotificationIcon
+	(*KeyEvent)(nil),               // 3: moqi.protocol.KeyEvent
+	(*ButtonInfo)(nil),             // 4: moqi.protocol.ButtonInfo
+	(*MenuItem)(nil),               // 5: moqi.protocol.MenuItem
+	(*PreservedKey)(nil),           // 6: moqi.protocol.PreservedKey
+	(*CandidateEntry)(nil),         // 7: moqi.protocol.CandidateEntry
+	(*TypeDuckCandidatePage)(nil),  // 8: moqi.protocol.TypeDuckCandidatePage
+	(*AutoPairRule)(nil),           // 9: moqi.protocol.AutoPairRule
+	(*CustomizeUi)(nil),            // 10: moqi.protocol.CustomizeUi
+	(*MessageWindow)(nil),          // 11: moqi.protocol.MessageWindow
+	(*TrayNotification)(nil),       // 12: moqi.protocol.TrayNotification
+	(*TypeDuckSettingsUpdate)(nil), // 13: moqi.protocol.TypeDuckSettingsUpdate
+	(*TypeDuckDeployRequest)(nil),  // 14: moqi.protocol.TypeDuckDeployRequest
+	(*ClientRequest)(nil),          // 15: moqi.protocol.ClientRequest
+	(*ServerResponse)(nil),         // 16: moqi.protocol.ServerResponse
 }
 var file_proto_moqi_proto_depIdxs = []int32{
 	1,  // 0: moqi.protocol.ButtonInfo.type:type_name -> moqi.protocol.ButtonType
 	5,  // 1: moqi.protocol.MenuItem.submenu:type_name -> moqi.protocol.MenuItem
-	8,  // 2: moqi.protocol.CustomizeUi.auto_pair_rules:type_name -> moqi.protocol.AutoPairRule
+	9,  // 2: moqi.protocol.CustomizeUi.auto_pair_rules:type_name -> moqi.protocol.AutoPairRule
 	2,  // 3: moqi.protocol.TrayNotification.icon:type_name -> moqi.protocol.TrayNotificationIcon
 	0,  // 4: moqi.protocol.ClientRequest.method:type_name -> moqi.protocol.Method
 	3,  // 5: moqi.protocol.ClientRequest.key_event:type_name -> moqi.protocol.KeyEvent
-	5,  // 6: moqi.protocol.ServerResponse.menu_items:type_name -> moqi.protocol.MenuItem
-	9,  // 7: moqi.protocol.ServerResponse.customize_ui:type_name -> moqi.protocol.CustomizeUi
-	4,  // 8: moqi.protocol.ServerResponse.add_button:type_name -> moqi.protocol.ButtonInfo
-	4,  // 9: moqi.protocol.ServerResponse.change_button:type_name -> moqi.protocol.ButtonInfo
-	10, // 10: moqi.protocol.ServerResponse.show_message:type_name -> moqi.protocol.MessageWindow
-	6,  // 11: moqi.protocol.ServerResponse.add_preserved_key:type_name -> moqi.protocol.PreservedKey
-	11, // 12: moqi.protocol.ServerResponse.tray_notification:type_name -> moqi.protocol.TrayNotification
-	7,  // 13: moqi.protocol.ServerResponse.candidate_entries:type_name -> moqi.protocol.CandidateEntry
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	13, // 6: moqi.protocol.ClientRequest.typeduck_settings_update:type_name -> moqi.protocol.TypeDuckSettingsUpdate
+	14, // 7: moqi.protocol.ClientRequest.typeduck_deploy_request:type_name -> moqi.protocol.TypeDuckDeployRequest
+	5,  // 8: moqi.protocol.ServerResponse.menu_items:type_name -> moqi.protocol.MenuItem
+	10, // 9: moqi.protocol.ServerResponse.customize_ui:type_name -> moqi.protocol.CustomizeUi
+	4,  // 10: moqi.protocol.ServerResponse.add_button:type_name -> moqi.protocol.ButtonInfo
+	4,  // 11: moqi.protocol.ServerResponse.change_button:type_name -> moqi.protocol.ButtonInfo
+	11, // 12: moqi.protocol.ServerResponse.show_message:type_name -> moqi.protocol.MessageWindow
+	6,  // 13: moqi.protocol.ServerResponse.add_preserved_key:type_name -> moqi.protocol.PreservedKey
+	12, // 14: moqi.protocol.ServerResponse.tray_notification:type_name -> moqi.protocol.TrayNotification
+	7,  // 15: moqi.protocol.ServerResponse.candidate_entries:type_name -> moqi.protocol.CandidateEntry
+	8,  // 16: moqi.protocol.ServerResponse.typeduck_candidate_page:type_name -> moqi.protocol.TypeDuckCandidatePage
+	13, // 17: moqi.protocol.ServerResponse.typeduck_settings_update:type_name -> moqi.protocol.TypeDuckSettingsUpdate
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_proto_moqi_proto_init() }
@@ -1709,16 +2124,17 @@ func file_proto_moqi_proto_init() {
 		return
 	}
 	file_proto_moqi_proto_msgTypes[1].OneofWrappers = []any{}
-	file_proto_moqi_proto_msgTypes[6].OneofWrappers = []any{}
-	file_proto_moqi_proto_msgTypes[9].OneofWrappers = []any{}
+	file_proto_moqi_proto_msgTypes[7].OneofWrappers = []any{}
 	file_proto_moqi_proto_msgTypes[10].OneofWrappers = []any{}
+	file_proto_moqi_proto_msgTypes[12].OneofWrappers = []any{}
+	file_proto_moqi_proto_msgTypes[13].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_moqi_proto_rawDesc), len(file_proto_moqi_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   11,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

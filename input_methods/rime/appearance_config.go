@@ -17,6 +17,9 @@ const rimeCommonCustomConfigFileName = "common.custom.yaml"
 const typeDuckPreferencesFileName = "TypeDuckPreferences.json"
 const typeDuckSettingsApplyFailure = "設定已儲存，但輸入法重新部署失敗 / Settings were saved, but IME redeploy failed"
 
+var customizeTypeDuckSettingsFunc = CustomizeTypeDuckSettings
+var reloadTypeDuckSettingsFunc = RimeReloadIncremental
+
 type appearanceConfig struct {
 	CandidateTheme                 *string           `json:"candidate_theme,omitempty"`
 	FontFace                       *string           `json:"font_face,omitempty"`
@@ -214,6 +217,23 @@ func loadTypeDuckRimePreferences() (typeDuckRimePreferences, bool) {
 	if err := json.Unmarshal(data, &prefs); err != nil {
 		return defaultTypeDuckRimePreferences(), false
 	}
+	return normalizeTypeDuckRimePreferences(prefs), true
+}
+
+func typeDuckRimePreferencesFromRequest(req *imecore.Request) (typeDuckRimePreferences, bool) {
+	if req == nil || req.TypeDuckSettings == nil {
+		return loadTypeDuckRimePreferences()
+	}
+	settings := req.TypeDuckSettings
+	prefs := defaultTypeDuckRimePreferences()
+	if settings.PageSize != 0 {
+		prefs.PageSize = settings.PageSize
+	}
+	prefs.EnableCompletion = settings.EnableCompletion
+	prefs.EnableCorrection = settings.EnableCorrection
+	prefs.EnableSentence = settings.EnableSentence
+	prefs.EnableLearning = settings.EnableLearning
+	prefs.IsCangjie5 = settings.IsCangjie5
 	return normalizeTypeDuckRimePreferences(prefs), true
 }
 
@@ -556,6 +576,14 @@ func (ime *IME) candidateCount() int {
 	}
 }
 
+func (ime *IME) candidatePageLimit(state rimeState) int {
+	limit := ime.candidateCount()
+	if state.PageSize > limit {
+		return state.PageSize
+	}
+	return limit
+}
+
 func isCandidateCountCommand(commandID int) bool {
 	switch commandID {
 	case ID_APPEARANCE_CAND_COUNT_3, ID_APPEARANCE_CAND_COUNT_5, ID_APPEARANCE_CAND_COUNT_7, ID_APPEARANCE_CAND_COUNT_9:
@@ -601,16 +629,18 @@ func typeDuckCommonPatchList(prefs typeDuckRimePreferences) []string {
 func (ime *IME) writeTypeDuckRimeCustomSettings(prefs typeDuckRimePreferences) bool {
 	userDir := ime.userDir()
 	if userDir == "" {
+		debugLogf("TypeDuck settings file fallback failed: empty userDir")
 		return false
 	}
 	if err := os.MkdirAll(userDir, 0o755); err != nil {
+		debugLogf("TypeDuck settings file fallback mkdir failed userDir=%q err=%v", userDir, err)
 		return false
 	}
 
-	// This librime fork does not expose TypeDuck Web's levers/custom-settings API,
-	// so the Windows runtime writes the equivalent generated Rime side effects.
 	defaultContent := fmt.Sprintf("config_version: '%d'\npatch:\n  menu/page_size: %d\n", prefs.PageSize, prefs.PageSize)
-	if err := os.WriteFile(filepath.Join(userDir, rimeDefaultCustomConfigFileName), []byte(defaultContent), 0o644); err != nil {
+	defaultPath := filepath.Join(userDir, rimeDefaultCustomConfigFileName)
+	if err := os.WriteFile(defaultPath, []byte(defaultContent), 0o644); err != nil {
+		debugLogf("TypeDuck settings file fallback write default failed path=%q err=%v", defaultPath, err)
 		return false
 	}
 
@@ -621,26 +651,60 @@ func (ime *IME) writeTypeDuckRimeCustomSettings(prefs typeDuckRimePreferences) b
 		common.WriteString(patch)
 		common.WriteByte('\n')
 	}
-	return os.WriteFile(filepath.Join(userDir, rimeCommonCustomConfigFileName), []byte(common.String()), 0o644) == nil
+	commonPath := filepath.Join(userDir, rimeCommonCustomConfigFileName)
+	if err := os.WriteFile(commonPath, []byte(common.String()), 0o644); err != nil {
+		debugLogf("TypeDuck settings file fallback write common failed path=%q err=%v", commonPath, err)
+		return false
+	}
+	debugLogf("TypeDuck settings file fallback wrote default=%q common=%q", defaultPath, commonPath)
+	return true
 }
 
 func (ime *IME) applyTypeDuckPreferences(req *imecore.Request, resp *imecore.Response) bool {
-	prefs, ok := loadTypeDuckRimePreferences()
+	prefs, ok := typeDuckRimePreferencesFromRequest(req)
 	if !ok {
 		resp.Error = "設定檔無效，未有變更 Rime 設定 / Settings file is invalid; Rime settings were not changed"
 		return false
 	}
-	if !ime.writeTypeDuckRimeCustomSettings(prefs) {
-		resp.Error = "設定已儲存，但 Rime 自訂設定未能寫入 / Settings were saved, but Rime custom settings could not be written"
-		return false
+	debugLogf("TypeDuck settings customize start pageSize=%d completion=%t correction=%t sentence=%t learning=%t cangjie5=%t",
+		prefs.PageSize, prefs.EnableCompletion, prefs.EnableCorrection, prefs.EnableSentence, prefs.EnableLearning, prefs.IsCangjie5)
+	if !customizeTypeDuckSettingsFunc(prefs) {
+		debugLogf("TypeDuck settings customize failed; trying file fallback")
+		if !ime.writeTypeDuckRimeCustomSettings(prefs) {
+			resp.Error = "設定已儲存，但 Rime 自訂設定未能套用 / Settings were saved, but Rime custom settings could not be applied"
+			return false
+		}
 	}
-	if !ime.redeploy(req, resp) {
+	debugLogf("TypeDuck settings customize saved")
+	if !ime.redeployTypeDuckSettings(req, resp) {
 		resp.Error = typeDuckSettingsApplyFailure
 		if resp.TrayNotification == nil {
 			resp.TrayNotification = deployTrayNotification(false)
 		}
 		return false
 	}
+	return true
+}
+
+func (ime *IME) redeployTypeDuckSettings(req *imecore.Request, resp *imecore.Response) bool {
+	sharedDir := ime.sharedDir()
+	userDir := ime.userDir()
+	debugLogf("TypeDuck settings redeploy via incremental reload sharedDir=%q userDir=%q", sharedDir, userDir)
+	if sharedDir == "" || userDir == "" {
+		return false
+	}
+	if err := ime.reloadAIConfig(); err != nil {
+		debugLogf("TypeDuck settings reload AI config failed but continuing: %v", err)
+	}
+	ime.destroySession(resp)
+	if !reloadTypeDuckSettingsFunc(sharedDir, userDir, APP, APP_VERSION) {
+		debugLogf("TypeDuck settings incremental reload failed")
+		return false
+	}
+	debugLogf("TypeDuck settings incremental reload completed")
+	ime.keyComposing = false
+	ime.selectKeys = ""
+	ime.createSession(resp)
 	return true
 }
 

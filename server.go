@@ -260,6 +260,12 @@ func (s *Server) handleRequest(clientID string, req *imecore.Request) *imecore.R
 			ReturnValue: 1,
 		}
 
+	case "typeduckSettingsUpdate":
+		return rime.ApplyTypeDuckSettingsFromLauncher(req, clientID)
+
+	case "typeduckDeploy":
+		return rime.DeployTypeDuckFromLauncher(req)
+
 	case "onActivate", "onDeactivate", "filterKeyDown", "onKeyDown",
 		"filterKeyUp", "onKeyUp", "onCommand", "onMenu", "onCompositionTerminated",
 		"onPreservedKey", "onLangProfileActivated", "highlightCandidate",

@@ -147,6 +147,8 @@ type rimeState struct {
 	Composition     string
 	RawInput        string
 	PageNo          int
+	PageSize        int
+	IsLastPage      bool
 	CursorPos       int
 	SelStart        int
 	SelEnd          int
@@ -194,7 +196,6 @@ type IME struct {
 	lastKeyUpRet                 bool
 	keyComposing                 bool
 	backend                      rimeBackend
-	typeDuckLookup               *typeDuckLookup
 	aiEnabled                    bool
 	aiActive                     bool
 	aiPending                    bool
@@ -296,6 +297,57 @@ func New(client *imecore.Client) imecore.TextService {
 	return ime
 }
 
+func ApplyTypeDuckSettingsFromLauncher(req *imecore.Request, clientID string) *imecore.Response {
+	if clientID == "" {
+		clientID = "settings"
+	}
+	client := &imecore.Client{ID: clientID, GUID: "typeduck-settings"}
+	service := New(client)
+	ime, ok := service.(*IME)
+	if !ok {
+		return &imecore.Response{SeqNum: req.SeqNum, Success: false, Error: typeDuckSettingsApplyFailure}
+	}
+	client.Service = ime
+	if !ime.Init(&imecore.Request{
+		Method:          "init",
+		SeqNum:          req.SeqNum,
+		IsWindows8Above: true,
+	}) {
+		return &imecore.Response{SeqNum: req.SeqNum, Success: false, Error: "設定已儲存，但 TypeDuck 後端未能啟動 / Settings were saved, but the TypeDuck backend could not start"}
+	}
+	defer ime.Close()
+	return ime.HandleRequest(req)
+}
+
+func DeployTypeDuckFromLauncher(req *imecore.Request) *imecore.Response {
+	resp := imecore.NewResponse(req.SeqNum, true)
+	ime := &IME{}
+	sharedDir := ime.sharedDir()
+	userDir := ime.userDir()
+	if sharedDir == "" || userDir == "" {
+		resp.Success = false
+		resp.ReturnValue = 0
+		resp.Error = typeDuckSettingsApplyFailure
+		resp.TrayNotification = deployTrayNotification(false)
+		return resp
+	}
+	if err := ime.reloadAIConfig(); err != nil {
+		log.Printf("重新加载 AI 配置失败，将继续部署: %v", err)
+	}
+	success := rimeRedeployFunc(sharedDir, userDir, APP, APP_VERSION)
+	if success {
+		resp.ReturnValue = 1
+	} else {
+		resp.ReturnValue = 0
+	}
+	resp.Success = success
+	if !success {
+		resp.Error = typeDuckSettingsApplyFailure
+	}
+	resp.TrayNotification = deployTrayNotification(success)
+	return resp
+}
+
 func (ime *IME) SetAIReviewGenerator(generator func(aiGenerateRequest) ([]string, error)) {
 	ime.aiReviewGenerator = generator
 	if len(ime.aiActions) == 0 && generator != nil {
@@ -372,6 +424,29 @@ func (ime *IME) HandleRequest(req *imecore.Request) *imecore.Response {
 		return ime.deleteCandidateOnCurrentPage(req, resp)
 	case "cloudClipboardUpload":
 		return ime.onCloudClipboardUpload(req, resp)
+	case "typeduckSettingsUpdate":
+		if ime.applyTypeDuckPreferences(req, resp) {
+			resp.ReturnValue = 1
+			resp.CustomizeUI = ime.customizeUIMap()
+		} else {
+			resp.Success = false
+			resp.ReturnValue = 0
+		}
+		return resp
+	case "typeduckDeploy":
+		if !ime.redeploy(req, resp) {
+			resp.Success = false
+			resp.ReturnValue = 0
+			if resp.TrayNotification == nil {
+				resp.TrayNotification = deployTrayNotification(false)
+			}
+		} else {
+			resp.ReturnValue = 1
+			if resp.TrayNotification == nil {
+				resp.TrayNotification = deployTrayNotification(true)
+			}
+		}
+		return resp
 	default:
 		resp.ReturnValue = 0
 		return resp
@@ -1090,7 +1165,6 @@ func (ime *IME) Init(req *imecore.Request) bool {
 			firstRun = true
 		}
 	}
-	ime.typeDuckLookup = newTypeDuckLookup(sharedDir)
 
 	if userDir == "" {
 		log.Println("未找到 APPDATA，原生 RIME 不可用")
@@ -1607,8 +1681,7 @@ func (ime *IME) currentVisibleBackendState() (rimeState, bool) {
 	stateStart := time.Now()
 	state := ime.backend.State()
 	logRimeSlow("backend.State", stateStart, "composition=%d candidates=%d commit=%d", len(state.Composition), len(state.Candidates), len(state.CommitString))
-	state.Candidates = ime.typeDuckLookup.enrichCandidates(state.Candidates)
-	visibleCandidateCount := ime.candidateCount()
+	visibleCandidateCount := ime.candidatePageLimit(state)
 	if visibleCandidateCount > 0 && len(state.Candidates) > visibleCandidateCount {
 		state.Candidates = append([]candidateItem(nil), state.Candidates[:visibleCandidateCount]...)
 	}
@@ -1670,7 +1743,7 @@ func (ime *IME) fillAIResponse(resp *imecore.Response) {
 		combined = append(combined, ime.aiCandidates[0])
 	}
 	combined = append(combined, ime.formatCandidates(state.Candidates)...)
-	visibleCandidateCount := ime.candidateCount()
+	visibleCandidateCount := ime.candidatePageLimit(state)
 	if visibleCandidateCount > 0 && len(combined) > visibleCandidateCount {
 		combined = combined[:visibleCandidateCount]
 	}
@@ -2258,6 +2331,7 @@ func (ime *IME) clearResponse(resp *imecore.Response) {
 	resp.CandidateEntries = []imecore.CandidateEntry{}
 	resp.CandidateCursor = 0
 	resp.HasCandidateCursor = false
+	resp.TypeDuckCandidatePage = nil
 	resp.ShowCandidates = false
 }
 
@@ -2311,9 +2385,9 @@ func (ime *IME) fillResponseFromBackendState(resp *imecore.Response, allowCommit
 	if len(customPhraseCandidates) > 0 && len(state.Candidates) > 0 {
 		state.Candidates = filterDuplicateCandidatesByText(state.Candidates, customPhraseCandidates)
 	}
-	remainingCandidateCount := ime.candidateCount() - len(customPhraseCandidates)
+	remainingCandidateCount := ime.candidatePageLimit(state) - len(customPhraseCandidates)
 	if remainingCandidateCount < 0 {
-		customPhraseCandidates = customPhraseCandidates[:ime.candidateCount()]
+		customPhraseCandidates = customPhraseCandidates[:ime.candidatePageLimit(state)]
 		remainingCandidateCount = 0
 	}
 	if len(state.Candidates) > remainingCandidateCount {
@@ -2338,6 +2412,17 @@ func (ime *IME) fillResponseFromBackendState(resp *imecore.Response, allowCommit
 		}
 		resp.HasCandidateCursor = true
 		resp.ShowCandidates = true
+		pageSize := state.PageSize
+		if pageSize <= 0 {
+			pageSize = ime.candidateCount()
+		}
+		resp.TypeDuckCandidatePage = &imecore.TypeDuckCandidatePage{
+			PageIndex:   state.PageNo,
+			PageSize:    pageSize,
+			TotalCount:  0,
+			HasPrevious: state.PageNo > 0,
+			HasNext:     !state.IsLastPage,
+		}
 		selectKeys := state.SelectKeys
 		if len(customPhraseCandidates) > 0 && len(resp.CandidateList) <= len(aiSelectKeys) {
 			selectKeys = aiSelectKeys

@@ -25,6 +25,8 @@ enum Method {
   METHOD_SELECT_CANDIDATE = 17;
   METHOD_CHANGE_PAGE = 18;
   METHOD_CLOUD_CLIPBOARD_UPLOAD = 19;
+  METHOD_TYPEDUCK_SETTINGS_UPDATE = 101;
+  METHOD_TYPEDUCK_DEPLOY = 102;
 }
 
 enum ButtonType {
@@ -75,6 +77,14 @@ message CandidateEntry {
   string comment = 2;
 }
 
+message TypeDuckCandidatePage {
+  uint32 page_index = 1;
+  uint32 page_size = 2;
+  uint32 total_count = 3;
+  bool has_previous = 4;
+  bool has_next = 5;
+}
+
 message AutoPairRule {
   string open = 1;
   string close = 2;
@@ -118,6 +128,32 @@ message TrayNotification {
   TrayNotificationIcon icon = 3;
 }
 
+message TypeDuckSettingsUpdate {
+  optional string language = 1;
+  optional string schema_id = 2;
+  optional string display_language = 3;
+  optional bool ascii_mode = 4;
+  optional bool traditional_hong_kong = 5;
+  optional uint32 candidate_page_size = 6;
+  repeated string display_languages = 20;
+  optional string main_language = 21;
+  optional uint32 page_size = 22;
+  optional bool is_hei_typeface = 23;
+  optional string show_romanization = 24;
+  optional bool enable_completion = 25;
+  optional bool enable_correction = 26;
+  optional bool enable_sentence = 27;
+  optional bool enable_learning = 28;
+  optional bool show_reverse_code = 29;
+  optional bool is_cangjie5 = 30;
+}
+
+message TypeDuckDeployRequest {
+  string runtime_path = 1;
+  string schema_id = 2;
+  bool force = 3;
+}
+
 message ClientRequest {
   uint32 seq_num = 1;
   Method method = 2;
@@ -145,6 +181,8 @@ message ClientRequest {
   optional int32 candidate_index = 24;
   optional bool page_backward = 25;
   optional string cloud_clipboard_text = 26;
+  optional TypeDuckSettingsUpdate typeduck_settings_update = 29;
+  optional TypeDuckDeployRequest typeduck_deploy_request = 30;
 }
 
 message ServerResponse {
@@ -175,4 +213,6 @@ message ServerResponse {
   string error = 25;
   optional TrayNotification tray_notification = 26;
   repeated CandidateEntry candidate_entries = 27;
+  optional TypeDuckCandidatePage typeduck_candidate_page = 29;
+  optional TypeDuckSettingsUpdate typeduck_settings_update = 31;
 }

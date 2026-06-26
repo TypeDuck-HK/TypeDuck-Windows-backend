@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -88,6 +89,8 @@ type testBackend struct {
 	composition          string
 	rawInput             string
 	pageNo               int
+	pageSize             int
+	isLastPage           bool
 	candidateCursor      int
 	candidates           []candidateItem
 	selectKeys           string
@@ -153,6 +156,7 @@ func newTestBackend() *testBackend {
 			},
 		},
 		currentSchemaID: "rime_frost",
+		pageSize:        6,
 		pageSizeOK:      false,
 	}
 }
@@ -307,6 +311,8 @@ func (b *testBackend) State() rimeState {
 		Composition:     b.composition,
 		RawInput:        b.rawInput,
 		PageNo:          b.pageNo,
+		PageSize:        b.pageSize,
+		IsLastPage:      b.isLastPage,
 		CursorPos:       len(b.composition),
 		Candidates:      append([]candidateItem(nil), b.candidates...),
 		CandidateCursor: b.candidateCursor,
@@ -2401,6 +2407,210 @@ func TestOnCommandCandidateCountUsesRuntimePageSizeWhenAvailable(t *testing.T) {
 	}
 }
 
+func TestTypeduckSettingsUpdateCustomizesAndRedeploys(t *testing.T) {
+	oldCustomize := customizeTypeDuckSettingsFunc
+	oldReloadTypeDuckSettingsFunc := reloadTypeDuckSettingsFunc
+	var gotPrefs typeDuckRimePreferences
+	customizeCalls := 0
+	reloadCalls := 0
+	customizeTypeDuckSettingsFunc = func(prefs typeDuckRimePreferences) bool {
+		customizeCalls++
+		gotPrefs = prefs
+		return true
+	}
+	reloadTypeDuckSettingsFunc = func(sharedDir, userDir, appname, appver string) bool {
+		reloadCalls++
+		return true
+	}
+	defer func() {
+		customizeTypeDuckSettingsFunc = oldCustomize
+		reloadTypeDuckSettingsFunc = oldReloadTypeDuckSettingsFunc
+	}()
+
+	ime := newIsolatedTestIME(t)
+	backend := ime.backend.(*testBackend)
+
+	resp := ime.HandleRequest(&imecore.Request{
+		Method: "typeduckSettingsUpdate",
+		SeqNum: 42,
+		TypeDuckSettings: &imecore.TypeDuckSettingsUpdate{
+			PageSize:         8,
+			EnableCompletion: false,
+			EnableCorrection: true,
+			EnableSentence:   false,
+			EnableLearning:   false,
+			IsCangjie5:       false,
+		},
+	})
+
+	if !resp.Success || resp.ReturnValue != 1 {
+		t.Fatalf("expected settings update success, got %#v", resp)
+	}
+	if customizeCalls != 1 {
+		t.Fatalf("expected one customize call, got %d", customizeCalls)
+	}
+	if gotPrefs.PageSize != 8 || gotPrefs.EnableCompletion || !gotPrefs.EnableCorrection ||
+		gotPrefs.EnableSentence || gotPrefs.EnableLearning || gotPrefs.IsCangjie5 {
+		t.Fatalf("unexpected customized prefs: %#v", gotPrefs)
+	}
+	if backend.redeployCalls != 0 {
+		t.Fatalf("expected settings update to use maintenance instead of full backend redeploy, got %d", backend.redeployCalls)
+	}
+	if reloadCalls != 1 {
+		t.Fatalf("expected incremental reload once, got %d", reloadCalls)
+	}
+	if resp.TrayNotification != nil {
+		t.Fatalf("expected settings success to avoid tray notification, got %#v", resp.TrayNotification)
+	}
+}
+
+func TestTypeduckSettingsUpdateStaysSilentForLauncherClient(t *testing.T) {
+	t.Setenv("APPDATA", t.TempDir())
+	oldCustomize := customizeTypeDuckSettingsFunc
+	oldReloadTypeDuckSettingsFunc := reloadTypeDuckSettingsFunc
+	customizeTypeDuckSettingsFunc = func(prefs typeDuckRimePreferences) bool {
+		return true
+	}
+	reloadTypeDuckSettingsFunc = func(sharedDir, userDir, appname, appver string) bool {
+		return true
+	}
+	defer func() {
+		customizeTypeDuckSettingsFunc = oldCustomize
+		reloadTypeDuckSettingsFunc = oldReloadTypeDuckSettingsFunc
+	}()
+
+	ime := newIsolatedTestIME(t)
+	ime.Client.ID = "launcher-tray"
+
+	resp := ime.HandleRequest(&imecore.Request{
+		Method: "typeduckSettingsUpdate",
+		SeqNum: 142,
+		TypeDuckSettings: &imecore.TypeDuckSettingsUpdate{
+			PageSize:         8,
+			EnableCompletion: false,
+			EnableCorrection: true,
+			EnableSentence:   false,
+			EnableLearning:   false,
+			IsCangjie5:       false,
+		},
+	})
+
+	if !resp.Success || resp.ReturnValue != 1 {
+		t.Fatalf("expected launcher settings update success, got %#v", resp)
+	}
+	if resp.TrayNotification != nil {
+		t.Fatalf("expected launcher settings update to avoid tray notification, got %#v", resp.TrayNotification)
+	}
+}
+
+func TestTypeDuckDeployFromLauncherUsesFullRedeploy(t *testing.T) {
+	t.Setenv("APPDATA", t.TempDir())
+	oldRedeployFunc := rimeRedeployFunc
+	var gotSharedDir string
+	var gotUserDir string
+	var gotAppName string
+	var gotAppVersion string
+	rimeRedeployFunc = func(datadir, userdir, appname, appver string) bool {
+		gotSharedDir = datadir
+		gotUserDir = userdir
+		gotAppName = appname
+		gotAppVersion = appver
+		return true
+	}
+	defer func() {
+		rimeRedeployFunc = oldRedeployFunc
+	}()
+
+	resp := DeployTypeDuckFromLauncher(&imecore.Request{
+		Method: "typeduckDeploy",
+		SeqNum: 143,
+	})
+
+	if !resp.Success || resp.ReturnValue != 1 {
+		t.Fatalf("expected deploy success, got %#v", resp)
+	}
+	if gotSharedDir == "" || gotUserDir == "" || gotAppName != APP || gotAppVersion != APP_VERSION {
+		t.Fatalf("expected full RimeRedeploy paths, got datadir=%q userdir=%q app=%q version=%q",
+			gotSharedDir, gotUserDir, gotAppName, gotAppVersion)
+	}
+	if resp.TrayNotification == nil || resp.TrayNotification.Icon != imecore.TrayNotificationIconInfo {
+		t.Fatalf("expected deploy success notification, got %#v", resp.TrayNotification)
+	}
+}
+
+func TestTypeduckSettingsUpdateWritesCustomYamlFallbackWhenLeversFails(t *testing.T) {
+	t.Setenv("APPDATA", t.TempDir())
+	oldCustomize := customizeTypeDuckSettingsFunc
+	oldReloadTypeDuckSettingsFunc := reloadTypeDuckSettingsFunc
+	customizeTypeDuckSettingsFunc = func(prefs typeDuckRimePreferences) bool {
+		return false
+	}
+	reloadTypeDuckSettingsFunc = func(sharedDir, userDir, appname, appver string) bool {
+		return true
+	}
+	defer func() {
+		customizeTypeDuckSettingsFunc = oldCustomize
+		reloadTypeDuckSettingsFunc = oldReloadTypeDuckSettingsFunc
+	}()
+
+	ime := newIsolatedTestIME(t)
+	resp := ime.HandleRequest(&imecore.Request{
+		Method: "typeduckSettingsUpdate",
+		SeqNum: 43,
+		TypeDuckSettings: &imecore.TypeDuckSettingsUpdate{
+			PageSize:         7,
+			EnableCompletion: false,
+			EnableCorrection: false,
+			EnableSentence:   false,
+			EnableLearning:   false,
+			IsCangjie5:       true,
+		},
+	})
+	if !resp.Success || resp.ReturnValue != 1 {
+		t.Fatalf("expected fallback settings update success, got %#v", resp)
+	}
+	userDir := filepath.Join(os.Getenv("APPDATA"), APP, defaultSchemeSetName)
+	defaultData, err := os.ReadFile(filepath.Join(userDir, rimeDefaultCustomConfigFileName))
+	if err != nil {
+		t.Fatalf("expected default custom yaml written: %v", err)
+	}
+	if !strings.Contains(string(defaultData), "menu/page_size: 7") {
+		t.Fatalf("expected page size in default custom yaml, got %q", string(defaultData))
+	}
+	commonData, err := os.ReadFile(filepath.Join(userDir, rimeCommonCustomConfigFileName))
+	if err != nil {
+		t.Fatalf("expected common custom yaml written: %v", err)
+	}
+	commonText := string(commonData)
+	for _, want := range []string{"common:/show_cangjie_roots", "common:/disable_completion", "common:/disable_sentence", "common:/disable_learning"} {
+		if !strings.Contains(commonText, want) {
+			t.Fatalf("expected %q in common custom yaml, got %q", want, commonText)
+		}
+	}
+}
+
+func TestFillResponseIncludesTypeDuckCandidatePageMetadata(t *testing.T) {
+	ime := newIsolatedTestIME(t)
+	backend := ime.backend.(*testBackend)
+	backend.composition = "hou"
+	backend.pageNo = 2
+	backend.pageSize = 6
+	backend.isLastPage = false
+	backend.candidates = []candidateItem{{Text: "好"}, {Text: "號"}}
+
+	resp := imecore.NewResponse(51, true)
+	if !ime.fillResponseFromBackendState(resp, false) {
+		t.Fatal("expected backend state to fill response")
+	}
+	page := resp.TypeDuckCandidatePage
+	if page == nil {
+		t.Fatal("expected TypeDuck candidate page metadata")
+	}
+	if page.PageIndex != 2 || page.PageSize != 6 || !page.HasPrevious || !page.HasNext {
+		t.Fatalf("unexpected page metadata: %#v", page)
+	}
+}
+
 func TestBuildMenuIncludesCandidateLayoutSubmenus(t *testing.T) {
 	ime := newIsolatedTestIME(t)
 	ime.style.CandidatePerRow = 5
@@ -3363,6 +3573,7 @@ func TestFillResponseFromBackendStateAppliesCandidateCount(t *testing.T) {
 	ime := newIsolatedTestIME(t)
 	ime.style.CandidateCount = 5
 	backend := ime.backend.(*testBackend)
+	backend.pageSize = 5
 	backend.composition = "ni"
 	backend.candidates = []candidateItem{
 		{Text: "你", Comment: "pron"},
@@ -3390,35 +3601,34 @@ func TestFillResponseFromBackendStateAppliesCandidateCount(t *testing.T) {
 	}
 }
 
-func TestFillResponseFromBackendStateAddsTypeDuckLookupRows(t *testing.T) {
+func TestFillResponseFromBackendStateAllowsSchemaPageSizeAboveSettingsRange(t *testing.T) {
 	ime := newIsolatedTestIME(t)
+	ime.style.CandidateCount = 9
 	backend := ime.backend.(*testBackend)
+	backend.pageSize = 12
+	backend.selectKeys = "1234567890ab"
 	backend.composition = "hou"
-	backend.candidates = []candidateItem{{Text: "好"}}
-
-	sharedDir := t.TempDir()
-	dictBody := strings.Join([]string{
-		"# Rime dictionary",
-		"hou2,,,,,,,1,,,adj,yue,,,,,good; very,,,,\t好",
-		"hou3,,,,,,,2,,,v,yue,,,,,like; fond of,,,,\t好",
-	}, "\n")
-	if err := os.WriteFile(filepath.Join(sharedDir, typeDuckLookupDictFile), []byte(dictBody), 0o644); err != nil {
-		t.Fatalf("write TypeDuck lookup dict: %v", err)
+	for i := 0; i < 12; i++ {
+		backend.candidates = append(backend.candidates, candidateItem{
+			Text:    fmt.Sprintf("候%d", i+1),
+			Comment: fmt.Sprintf("code%d", i+1),
+		})
 	}
-	ime.typeDuckLookup = newTypeDuckLookup(sharedDir)
 
-	resp := imecore.NewResponse(421, true)
+	resp := imecore.NewResponse(119, true)
 	ime.fillResponseFromBackendState(resp, false)
 
-	if len(resp.CandidateEntries) != 1 {
-		t.Fatalf("expected one candidate entry, got %#v", resp.CandidateEntries)
+	if len(resp.CandidateList) != 12 {
+		t.Fatalf("expected schema page size to display 12 candidates, got %#v", resp.CandidateList)
 	}
-	comment := resp.CandidateEntries[0].Comment
-	if !strings.Contains(comment, "\f\r1,好,hou2") || !strings.Contains(comment, "\r1,好,hou3") {
-		t.Fatalf("expected rich TypeDuck lookup rows for 好, got %q", comment)
+	if len(resp.CandidateEntries) != 12 {
+		t.Fatalf("expected 12 candidate entries, got %#v", resp.CandidateEntries)
 	}
-	if strings.Count(comment, "\r1,好,") != 2 {
-		t.Fatalf("expected two matched lookup rows, got %q", comment)
+	if resp.TypeDuckCandidatePage == nil || resp.TypeDuckCandidatePage.PageSize != 12 {
+		t.Fatalf("expected page metadata size 12, got %#v", resp.TypeDuckCandidatePage)
+	}
+	if resp.SetSelKeys != "1234567890ab" {
+		t.Fatalf("expected select keys to preserve 12 keys, got %q", resp.SetSelKeys)
 	}
 }
 
