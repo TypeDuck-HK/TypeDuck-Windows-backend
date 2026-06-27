@@ -2443,14 +2443,37 @@ func (ime *IME) isKnownDynamicCommand(commandID int) bool {
 func switchMenuText(sw RimeSwitch, enabled bool) string {
 	switch len(sw.States) {
 	case 0:
-		return sw.Name
+		return typeDuckMenuLabel(sw.Name)
 	case 1:
-		return sw.States[0]
+		return typeDuckMenuLabel(sw.States[0])
 	default:
 		if enabled {
-			return fmt.Sprintf("%s → %s", sw.States[1], sw.States[0])
+			return fmt.Sprintf("%s → %s", typeDuckMenuLabel(sw.States[1]), typeDuckMenuLabel(sw.States[0]))
 		}
-		return fmt.Sprintf("%s → %s", sw.States[0], sw.States[1])
+		return fmt.Sprintf("%s → %s", typeDuckMenuLabel(sw.States[0]), typeDuckMenuLabel(sw.States[1]))
+	}
+}
+
+func typeDuckMenuLabel(label string) string {
+	switch strings.TrimSpace(label) {
+	case "简体":
+		return "簡體 / Simplified"
+	case "繁体":
+		return "繁體 / Traditional"
+	case "中英文切换":
+		return "中英文切換 / Chinese-English"
+	case "全半角切换":
+		return "全半角切換 / Full-Half Width"
+	case "中文标点":
+		return "中文標點 / Chinese Punctuation"
+	case "英文标点":
+		return "英文標點 / English Punctuation"
+	case "中文":
+		return "中文 / Chinese"
+	case "西文":
+		return "西文 / Western"
+	default:
+		return label
 	}
 }
 
@@ -3046,7 +3069,7 @@ func (ime *IME) addButtons(resp *imecore.Response) {
 			resp.AddButton = append(resp.AddButton, imecore.ButtonInfo{
 				ID:        "windows-mode-icon",
 				Icon:      iconPath,
-				Tooltip:   "中英文切换",
+				Tooltip:   "中英文切換 / Chinese-English",
 				CommandID: ID_MODE_ICON,
 			})
 		}
@@ -3055,8 +3078,8 @@ func (ime *IME) addButtons(resp *imecore.Response) {
 		resp.AddButton = append(resp.AddButton, imecore.ButtonInfo{
 			ID:        "switch-lang",
 			Icon:      iconPath,
-			Text:      "中英文切换",
-			Tooltip:   "中英文切换",
+			Text:      "中英文切換 / Chinese-English",
+			Tooltip:   "中英文切換 / Chinese-English",
 			CommandID: ID_ASCII_MODE,
 		})
 	}
@@ -3064,8 +3087,8 @@ func (ime *IME) addButtons(resp *imecore.Response) {
 		resp.AddButton = append(resp.AddButton, imecore.ButtonInfo{
 			ID:        "switch-shape",
 			Icon:      iconPath,
-			Text:      "全半角切换",
-			Tooltip:   "全角/半角切换",
+			Text:      "全半角切換 / Full-Half Width",
+			Tooltip:   "全角/半角切換 / Full-Half Width",
 			CommandID: ID_FULL_SHAPE,
 		})
 	}
@@ -3073,7 +3096,7 @@ func (ime *IME) addButtons(resp *imecore.Response) {
 		resp.AddButton = append(resp.AddButton, imecore.ButtonInfo{
 			ID:   "settings",
 			Icon: iconPath,
-			Text: "设置",
+			Text: "設定 / Settings",
 			Type: "menu",
 		})
 	}
@@ -3175,39 +3198,39 @@ func (ime *IME) buildMenu() []map[string]interface{} {
 	}
 	if len(schemeSetItems) > 0 {
 		items = append(items, map[string]interface{}{
-			"text":    "切换方案集",
+			"text":    "切換方案集 / Switch Scheme Set",
 			"submenu": schemeSetItems,
 		})
 	}
 	if len(schemaItems) > 0 {
 		items = append(items, map[string]interface{}{
-			"text":    "输入方案(&I)",
+			"text":    "輸入方案(&I) / Input Schema",
 			"submenu": schemaItems,
 		})
 	}
 	if len(schemeSetItems) > 0 || len(schemaItems) > 0 {
 		items = append(items,
-			map[string]interface{}{"id": ID_OPEN_SUPER_ABBREV, "text": "打开超级简拼"},
-			map[string]interface{}{"id": ID_DEPLOY, "text": "刷新配置(&R)"},
+			map[string]interface{}{"id": ID_OPEN_SUPER_ABBREV, "text": "開啟超級簡拼 / Open Super Abbrev"},
+			map[string]interface{}{"id": ID_DEPLOY, "text": "重新部署(&R) / Redeploy"},
 			map[string]interface{}{"text": ""},
 		)
 	}
 	items = append(items,
-		map[string]interface{}{"id": ID_SHARED_INPUT_STATE, "text": "输入状态共享", "checked": ime.inputStateShared},
-		map[string]interface{}{"text": "外观(&A)", "submenu": []map[string]interface{}{
-			{"text": "切换主题", "submenu": ime.themeMenuItems()},
-			{"id": ID_APPEARANCE_INLINE_PREEDIT, "text": "行内预编辑", "checked": ime.inlinePreeditEnabled()},
-			{"text": "候选排列", "submenu": []map[string]interface{}{
-				{"id": ID_APPEARANCE_LAYOUT_VERTICAL, "text": "竖排", "checked": !ime.isHorizontalCandidateLayout()},
-				{"id": ID_APPEARANCE_LAYOUT_HORIZONTAL, "text": "横排", "checked": ime.isHorizontalCandidateLayout()},
+		map[string]interface{}{"id": ID_SHARED_INPUT_STATE, "text": "輸入狀態共享 / Share Input State", "checked": ime.inputStateShared},
+		map[string]interface{}{"text": "外觀(&A) / Appearance", "submenu": []map[string]interface{}{
+			{"text": "切換主題 / Switch Theme", "submenu": ime.themeMenuItems()},
+			{"id": ID_APPEARANCE_INLINE_PREEDIT, "text": "行內預編輯 / Inline Preedit", "checked": ime.inlinePreeditEnabled()},
+			{"text": "候選排列 / Candidate Layout", "submenu": []map[string]interface{}{
+				{"id": ID_APPEARANCE_LAYOUT_VERTICAL, "text": "直排 / Vertical", "checked": !ime.isHorizontalCandidateLayout()},
+				{"id": ID_APPEARANCE_LAYOUT_HORIZONTAL, "text": "橫排 / Horizontal", "checked": ime.isHorizontalCandidateLayout()},
 			}},
-			{"text": "每行候选数", "enabled": ime.isHorizontalCandidateLayout(), "submenu": []map[string]interface{}{
+			{"text": "每行候選數 / Candidates per Row", "enabled": ime.isHorizontalCandidateLayout(), "submenu": []map[string]interface{}{
 				{"id": ID_APPEARANCE_PER_ROW_3, "text": "3", "checked": ime.effectiveCandidatePerRow() == 3, "enabled": ime.isHorizontalCandidateLayout()},
 				{"id": ID_APPEARANCE_PER_ROW_5, "text": "5", "checked": ime.effectiveCandidatePerRow() == 5, "enabled": ime.isHorizontalCandidateLayout()},
 				{"id": ID_APPEARANCE_PER_ROW_7, "text": "7", "checked": ime.effectiveCandidatePerRow() == 7, "enabled": ime.isHorizontalCandidateLayout()},
 				{"id": ID_APPEARANCE_PER_ROW_9, "text": "9", "checked": ime.effectiveCandidatePerRow() == 9, "enabled": ime.isHorizontalCandidateLayout()},
 			}},
-			{"text": "候选间距", "submenu": []map[string]interface{}{
+			{"text": "候選間距 / Candidate Spacing", "submenu": []map[string]interface{}{
 				{"id": ID_APPEARANCE_SPACING_0, "text": "0", "checked": ime.style.CandidateSpacing == 0},
 				{"id": ID_APPEARANCE_SPACING_10, "text": "10", "checked": ime.style.CandidateSpacing == 10},
 				{"id": ID_APPEARANCE_SPACING_20, "text": "20", "checked": ime.style.CandidateSpacing == 20},
@@ -3215,13 +3238,13 @@ func (ime *IME) buildMenu() []map[string]interface{} {
 				{"id": ID_APPEARANCE_SPACING_40, "text": "40", "checked": ime.style.CandidateSpacing == 40},
 				{"id": ID_APPEARANCE_SPACING_50, "text": "50", "checked": ime.style.CandidateSpacing == 50},
 			}},
-			{"text": "总候选数量", "submenu": []map[string]interface{}{
+			{"text": "候選總數 / Candidate Count", "submenu": []map[string]interface{}{
 				{"id": ID_APPEARANCE_CAND_COUNT_3, "text": "3", "checked": ime.candidateCount() == 3},
 				{"id": ID_APPEARANCE_CAND_COUNT_5, "text": "5", "checked": ime.candidateCount() == 5},
 				{"id": ID_APPEARANCE_CAND_COUNT_7, "text": "7", "checked": ime.candidateCount() == 7},
 				{"id": ID_APPEARANCE_CAND_COUNT_9, "text": "9", "checked": ime.candidateCount() == 9},
 			}},
-			{"text": "字体大小", "submenu": []map[string]interface{}{
+			{"text": "字體大小 / Font Size", "submenu": []map[string]interface{}{
 				{"id": ID_APPEARANCE_FONT_14, "text": "14", "checked": ime.style.FontPoint == 14},
 				{"id": ID_APPEARANCE_FONT_16, "text": "16", "checked": ime.style.FontPoint == 16},
 				{"id": ID_APPEARANCE_FONT_18, "text": "18", "checked": ime.style.FontPoint == 18},
@@ -3232,13 +3255,13 @@ func (ime *IME) buildMenu() []map[string]interface{} {
 				{"id": ID_APPEARANCE_FONT_28, "text": "28", "checked": ime.style.FontPoint == 28},
 				{"id": ID_APPEARANCE_FONT_30, "text": "30", "checked": ime.style.FontPoint == 30},
 			}},
-			{"text": "候选文字字体", "submenu": []map[string]interface{}{
+			{"text": "候選文字字體 / Candidate Font", "submenu": []map[string]interface{}{
 				{"id": ID_APPEARANCE_FONT_FAMILY_SEGOE_UI, "text": "Segoe UI", "checked": strings.EqualFold(ime.style.FontFace, "Segoe UI")},
-				{"id": ID_APPEARANCE_FONT_FAMILY_YAHEI_UI, "text": "微软雅黑 UI", "checked": strings.EqualFold(ime.style.FontFace, "Microsoft YaHei UI")},
-				{"id": ID_APPEARANCE_FONT_FAMILY_DENGXIAN, "text": "等线", "checked": strings.EqualFold(ime.style.FontFace, "DengXian")},
-				{"id": ID_APPEARANCE_FONT_FAMILY_SIMSUN, "text": "宋体", "checked": strings.EqualFold(ime.style.FontFace, "SimSun")},
+				{"id": ID_APPEARANCE_FONT_FAMILY_YAHEI_UI, "text": "Microsoft YaHei UI", "checked": strings.EqualFold(ime.style.FontFace, "Microsoft YaHei UI")},
+				{"id": ID_APPEARANCE_FONT_FAMILY_DENGXIAN, "text": "DengXian", "checked": strings.EqualFold(ime.style.FontFace, "DengXian")},
+				{"id": ID_APPEARANCE_FONT_FAMILY_SIMSUN, "text": "SimSun", "checked": strings.EqualFold(ime.style.FontFace, "SimSun")},
 			}},
-			{"text": "注释文字大小", "submenu": []map[string]interface{}{
+			{"text": "註釋文字大小 / Comment Font Size", "submenu": []map[string]interface{}{
 				{"id": ID_APPEARANCE_COMMENT_FONT_14, "text": "14", "checked": ime.style.CandidateCommentFontPoint == 14},
 				{"id": ID_APPEARANCE_COMMENT_FONT_16, "text": "16", "checked": ime.style.CandidateCommentFontPoint == 16},
 				{"id": ID_APPEARANCE_COMMENT_FONT_18, "text": "18", "checked": ime.style.CandidateCommentFontPoint == 18},
@@ -3249,47 +3272,47 @@ func (ime *IME) buildMenu() []map[string]interface{} {
 				{"id": ID_APPEARANCE_COMMENT_FONT_28, "text": "28", "checked": ime.style.CandidateCommentFontPoint == 28},
 				{"id": ID_APPEARANCE_COMMENT_FONT_30, "text": "30", "checked": ime.style.CandidateCommentFontPoint == 30},
 			}},
-			{"text": "注释文字字体", "submenu": []map[string]interface{}{
+			{"text": "註釋文字字體 / Comment Font", "submenu": []map[string]interface{}{
 				{"id": ID_APPEARANCE_COMMENT_FONT_FAMILY_CONSOLAS, "text": "Consolas", "checked": strings.EqualFold(ime.style.CandidateCommentFontFace, "Consolas")},
-				{"id": ID_APPEARANCE_COMMENT_FONT_FAMILY_YAHEI_UI, "text": "微软雅黑 UI", "checked": strings.EqualFold(ime.style.CandidateCommentFontFace, "Microsoft YaHei UI")},
-				{"id": ID_APPEARANCE_COMMENT_FONT_FAMILY_DENGXIAN, "text": "等线", "checked": strings.EqualFold(ime.style.CandidateCommentFontFace, "DengXian")},
-				{"id": ID_APPEARANCE_COMMENT_FONT_FAMILY_SIMSUN, "text": "宋体", "checked": strings.EqualFold(ime.style.CandidateCommentFontFace, "SimSun")},
+				{"id": ID_APPEARANCE_COMMENT_FONT_FAMILY_YAHEI_UI, "text": "Microsoft YaHei UI", "checked": strings.EqualFold(ime.style.CandidateCommentFontFace, "Microsoft YaHei UI")},
+				{"id": ID_APPEARANCE_COMMENT_FONT_FAMILY_DENGXIAN, "text": "DengXian", "checked": strings.EqualFold(ime.style.CandidateCommentFontFace, "DengXian")},
+				{"id": ID_APPEARANCE_COMMENT_FONT_FAMILY_SIMSUN, "text": "SimSun", "checked": strings.EqualFold(ime.style.CandidateCommentFontFace, "SimSun")},
 			}},
-			{"text": "候选框背景", "submenu": []map[string]interface{}{
-				{"id": ID_APPEARANCE_BG_WHITE, "text": "白色", "checked": strings.EqualFold(ime.style.CandidateBackgroundColor, "#ffffff")},
-				{"id": ID_APPEARANCE_BG_WARM, "text": "暖白", "checked": strings.EqualFold(ime.style.CandidateBackgroundColor, "#fff7e8")},
-				{"id": ID_APPEARANCE_BG_BLUE, "text": "浅蓝", "checked": strings.EqualFold(ime.style.CandidateBackgroundColor, "#f3f8ff")},
+			{"text": "候選框背景 / Candidate Background", "submenu": []map[string]interface{}{
+				{"id": ID_APPEARANCE_BG_WHITE, "text": "白色 / White", "checked": strings.EqualFold(ime.style.CandidateBackgroundColor, "#ffffff")},
+				{"id": ID_APPEARANCE_BG_WARM, "text": "暖白 / Warm White", "checked": strings.EqualFold(ime.style.CandidateBackgroundColor, "#fff7e8")},
+				{"id": ID_APPEARANCE_BG_BLUE, "text": "淺藍 / Light Blue", "checked": strings.EqualFold(ime.style.CandidateBackgroundColor, "#f3f8ff")},
 			}},
-			{"text": "高亮颜色", "submenu": []map[string]interface{}{
-				{"id": ID_APPEARANCE_HL_BLUE, "text": "浅蓝", "checked": strings.EqualFold(ime.style.CandidateHighlightColor, "#c6ddf9")},
-				{"id": ID_APPEARANCE_HL_GRAY, "text": "浅灰", "checked": strings.EqualFold(ime.style.CandidateHighlightColor, "#e5e7eb")},
-				{"id": ID_APPEARANCE_HL_GREEN, "text": "浅绿", "checked": strings.EqualFold(ime.style.CandidateHighlightColor, "#d9f2e6")},
+			{"text": "高亮顏色 / Highlight Color", "submenu": []map[string]interface{}{
+				{"id": ID_APPEARANCE_HL_BLUE, "text": "淺藍 / Light Blue", "checked": strings.EqualFold(ime.style.CandidateHighlightColor, "#c6ddf9")},
+				{"id": ID_APPEARANCE_HL_GRAY, "text": "淺灰 / Light Gray", "checked": strings.EqualFold(ime.style.CandidateHighlightColor, "#e5e7eb")},
+				{"id": ID_APPEARANCE_HL_GREEN, "text": "淺綠 / Light Green", "checked": strings.EqualFold(ime.style.CandidateHighlightColor, "#d9f2e6")},
 			}},
-			{"text": "字体颜色", "submenu": []map[string]interface{}{
-				{"id": ID_APPEARANCE_TEXT_BLACK, "text": "黑色", "checked": strings.EqualFold(ime.style.CandidateTextColor, "#000000")},
-				{"id": ID_APPEARANCE_TEXT_DARKGRAY, "text": "深灰", "checked": strings.EqualFold(ime.style.CandidateTextColor, "#333333")},
-				{"id": ID_APPEARANCE_TEXT_BLUE, "text": "深蓝", "checked": strings.EqualFold(ime.style.CandidateTextColor, "#1d4ed8")},
+			{"text": "字體顏色 / Text Color", "submenu": []map[string]interface{}{
+				{"id": ID_APPEARANCE_TEXT_BLACK, "text": "黑色 / Black", "checked": strings.EqualFold(ime.style.CandidateTextColor, "#000000")},
+				{"id": ID_APPEARANCE_TEXT_DARKGRAY, "text": "深灰 / Dark Gray", "checked": strings.EqualFold(ime.style.CandidateTextColor, "#333333")},
+				{"id": ID_APPEARANCE_TEXT_BLUE, "text": "深藍 / Dark Blue", "checked": strings.EqualFold(ime.style.CandidateTextColor, "#1d4ed8")},
 			}},
-			{"text": "高亮文字颜色", "submenu": []map[string]interface{}{
-				{"id": ID_APPEARANCE_HLTEXT_BLACK, "text": "黑色", "checked": strings.EqualFold(ime.style.CandidateHighlightTextColor, "#000000")},
-				{"id": ID_APPEARANCE_HLTEXT_WHITE, "text": "白色", "checked": strings.EqualFold(ime.style.CandidateHighlightTextColor, "#ffffff")},
-				{"id": ID_APPEARANCE_HLTEXT_BLUE, "text": "深蓝", "checked": strings.EqualFold(ime.style.CandidateHighlightTextColor, "#1d4ed8")},
+			{"text": "高亮文字顏色 / Highlight Text Color", "submenu": []map[string]interface{}{
+				{"id": ID_APPEARANCE_HLTEXT_BLACK, "text": "黑色 / Black", "checked": strings.EqualFold(ime.style.CandidateHighlightTextColor, "#000000")},
+				{"id": ID_APPEARANCE_HLTEXT_WHITE, "text": "白色 / White", "checked": strings.EqualFold(ime.style.CandidateHighlightTextColor, "#ffffff")},
+				{"id": ID_APPEARANCE_HLTEXT_BLUE, "text": "深藍 / Dark Blue", "checked": strings.EqualFold(ime.style.CandidateHighlightTextColor, "#1d4ed8")},
 			}},
 			{"text": ""},
-			{"id": ID_APPEARANCE_IMPORT_SKIN, "text": "导入皮肤"},
+			{"id": ID_APPEARANCE_IMPORT_SKIN, "text": "匯入外觀 / Import Skin"},
 		}},
-		map[string]interface{}{"text": "输入设置", "submenu": []map[string]interface{}{
-			{"id": ID_INPUT_SEMICOLON_SELECT_SECOND, "text": "分号键次选", "checked": ime.semicolonSelectSecond},
+		map[string]interface{}{"text": "輸入設定 / Input Settings", "submenu": []map[string]interface{}{
+			{"id": ID_INPUT_SEMICOLON_SELECT_SECOND, "text": "分號鍵次選 / Semicolon Selects Second", "checked": ime.semicolonSelectSecond},
 		}},
-		map[string]interface{}{"text": "打开文件夹(&O)", "submenu": []map[string]interface{}{
-			{"id": ID_USER_DIR, "text": "用户文件夹"},
-			{"id": ID_SHARED_DIR, "text": "共享文件夹"},
-			{"id": ID_SYNC_DIR, "text": "同步文件夹"},
-			{"id": ID_LOG_DIR, "text": "日志文件夹"},
+		map[string]interface{}{"text": "開啟資料夾(&O) / Open Folder", "submenu": []map[string]interface{}{
+			{"id": ID_USER_DIR, "text": "使用者資料夾 / User Folder"},
+			{"id": ID_SHARED_DIR, "text": "共用資料夾 / Shared Folder"},
+			{"id": ID_SYNC_DIR, "text": "同步資料夾 / Sync Folder"},
+			{"id": ID_LOG_DIR, "text": "記錄資料夾 / Log Folder"},
 		}},
 		map[string]interface{}{"text": ""},
-		map[string]interface{}{"id": ID_HELP_DOCS, "text": "帮助文档(&H)"},
-		map[string]interface{}{"id": ID_DISCUSSIONS, "text": "参加讨论(&J)"},
+		map[string]interface{}{"id": ID_HELP_DOCS, "text": "說明文件(&H) / Help"},
+		map[string]interface{}{"id": ID_DISCUSSIONS, "text": "參與討論(&J) / Discuss"},
 	)
 	return items
 }
