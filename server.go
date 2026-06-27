@@ -47,6 +47,7 @@ type Server struct {
 }
 
 const logRetentionDays = 7
+const typeDuckProfileGUID = "{c6e8f5df-6504-44f9-b7cf-17a195373a83}"
 
 func stringifyData(data map[string]interface{}) string {
 	if len(data) == 0 {
@@ -100,6 +101,12 @@ func (s *Server) RegisterService(guid string, factory ServiceFactory) {
 	guid = strings.ToLower(guid)
 	s.factories[guid] = factory
 	log.Printf("registered input service: %s", guid)
+}
+
+func registerTypeDuckRimeService(server *Server) {
+	server.RegisterService(typeDuckProfileGUID, func(client *imecore.Client, guid string) imecore.TextService {
+		return rime.New(client)
+	})
 }
 
 func (s *Server) Run() error {
@@ -275,6 +282,8 @@ func (s *Server) sendResponse(clientID string, resp *imecore.Response) error {
 }
 
 func loadInputMethods(server *Server) {
+	registerTypeDuckRimeService(server)
+
 	exePath, err := os.Executable()
 	if err != nil {
 		log.Fatal("failed to get executable path:", err)
@@ -296,7 +305,9 @@ func loadInputMethods(server *Server) {
 		imePath := filepath.Join(inputMethodsDir, entry.Name(), "ime.json")
 		data, err := os.ReadFile(imePath)
 		if err != nil {
-			log.Printf("failed to read %s: %v", imePath, err)
+			if !(entry.Name() == "rime" && os.IsNotExist(err)) {
+				log.Printf("failed to read %s: %v", imePath, err)
+			}
 			continue
 		}
 
@@ -318,6 +329,9 @@ func loadInputMethods(server *Server) {
 
 		switch entry.Name() {
 		case "rime":
+			if guid == typeDuckProfileGUID {
+				continue
+			}
 			server.RegisterService(guid, func(client *imecore.Client, g string) imecore.TextService {
 				return rime.New(client)
 			})

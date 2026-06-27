@@ -95,6 +95,15 @@ func TestWriteFramePrefixesPayloadLength(t *testing.T) {
 	}
 }
 
+func TestRegisterTypeDuckRimeServiceUsesFixedProfileGUID(t *testing.T) {
+	server := NewServer()
+	registerTypeDuckRimeService(server)
+
+	if _, ok := server.factories[typeDuckProfileGUID]; !ok {
+		t.Fatalf("expected fixed TypeDuck profile GUID %q to be registered", typeDuckProfileGUID)
+	}
+}
+
 func TestOpenLogFileUsesTypeDuckLogDirectoryUnderLocalAppData(t *testing.T) {
 	localAppData := t.TempDir()
 	t.Setenv("LOCALAPPDATA", localAppData)
