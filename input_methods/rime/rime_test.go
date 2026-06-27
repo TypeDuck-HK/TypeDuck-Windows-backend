@@ -4309,7 +4309,7 @@ func TestAppearanceSettingsPersistToDisk(t *testing.T) {
 	}
 }
 
-func TestLoadAppearancePrefsCreatesDefaultConfigWhenMissing(t *testing.T) {
+func TestLoadAppearancePrefsDoesNotCreateAppDataConfig(t *testing.T) {
 	appData := t.TempDir()
 	t.Setenv("APPDATA", appData)
 	resetSharedAppearanceConfigForTest()
@@ -4318,44 +4318,30 @@ func TestLoadAppearancePrefsCreatesDefaultConfigWhenMissing(t *testing.T) {
 	ime.loadAppearancePrefs()
 
 	configPath := filepath.Join(appData, APP, appearanceConfigFileName)
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		t.Fatalf("expected default appearance config written to disk: %v", err)
-	}
-
-	var persisted map[string]any
-	if err := json.Unmarshal(data, &persisted); err != nil {
-		t.Fatalf("expected valid appearance config json: %v", err)
-	}
-	if got := persisted["candidate_per_row"]; got != float64(1) {
-		t.Fatalf("expected persisted candidate_per_row 1 for vertical default, got %#v", got)
-	}
-	if got := persisted["candidate_count"]; got != float64(9) {
-		t.Fatalf("expected persisted candidate_count 9, got %#v", got)
-	}
-	if got := persisted["font_point"]; got != float64(20) {
-		t.Fatalf("expected persisted font_point 20, got %#v", got)
-	}
-	if got := persisted["font_face"]; got != "Segoe UI" {
-		t.Fatalf("expected persisted font_face Segoe UI, got %#v", got)
-	}
-	if got := persisted["candidate_comment_font_face"]; got != "Consolas" {
-		t.Fatalf("expected persisted candidate_comment_font_face Consolas, got %#v", got)
-	}
-	if got := persisted["candidate_comment_font_point"]; got != float64(18) {
-		t.Fatalf("expected persisted candidate_comment_font_point 18, got %#v", got)
-	}
-	if got := persisted["candidate_theme"]; got != "default" {
-		t.Fatalf("expected persisted candidate_theme default, got %#v", got)
-	}
-	if got := persisted["input_state_shared"]; got != false {
-		t.Fatalf("expected persisted input_state_shared false, got %#v", got)
+	if _, err := os.Stat(configPath); !os.IsNotExist(err) {
+		t.Fatalf("expected no AppData appearance config, stat err=%v", err)
 	}
 	if ime.style.CandidatePerRow != 1 {
 		t.Fatalf("expected in-memory style to stay vertical by default, got %d", ime.style.CandidatePerRow)
 	}
 	if ime.inputStateShared {
 		t.Fatal("expected shared input state disabled by default")
+	}
+}
+
+func TestCustomPhraseLookupDoesNotCreateAppDataFile(t *testing.T) {
+	appData := t.TempDir()
+	t.Setenv("APPDATA", appData)
+	resetCustomPhraseCacheForTest()
+
+	got := lookupCustomPhraseCandidates("aa", 5)
+	if len(got) != 0 {
+		t.Fatalf("expected no custom phrase candidates for v1, got %#v", got)
+	}
+
+	configPath := filepath.Join(appData, APP, customPhraseFileName)
+	if _, err := os.Stat(configPath); !os.IsNotExist(err) {
+		t.Fatalf("expected no AppData custom phrase file, stat err=%v", err)
 	}
 }
 

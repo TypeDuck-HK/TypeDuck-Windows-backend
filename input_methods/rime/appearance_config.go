@@ -156,19 +156,7 @@ func resetSharedAppearanceConfigForTest() {
 }
 
 func userAppearanceConfigPath() string {
-	root := moqiAppDataDir()
-	if root == "" {
-		return ""
-	}
-	return filepath.Join(root, appearanceConfigFileName)
-}
-
-func legacyUserAppearanceConfigPath() string {
-	root := moqiAppDataDir()
-	if root == "" {
-		return ""
-	}
-	return filepath.Join(root, defaultSchemeSetName, appearanceConfigFileName)
+	return ""
 }
 
 func typeDuckPreferencesPath() string {
@@ -352,44 +340,6 @@ func (ime *IME) loadAppearancePrefs() {
 		ime.applyAppearanceConfig(cfg)
 		ime.appearanceVersion = version
 		return
-	}
-
-	primaryPath := userAppearanceConfigPath()
-	if primaryPath == "" {
-		return
-	}
-
-	var (
-		data       []byte
-		err        error
-		loadedPath string
-	)
-	for _, path := range []string{primaryPath, legacyUserAppearanceConfigPath()} {
-		if path == "" {
-			continue
-		}
-		data, err = os.ReadFile(path)
-		if err == nil {
-			loadedPath = path
-			break
-		}
-		if !os.IsNotExist(err) {
-			return
-		}
-	}
-	if loadedPath == "" {
-		ime.saveAppearancePrefsWithReason("loadAppearancePrefs:create_default_config")
-		return
-	}
-
-	var cfg appearanceConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return
-	}
-	ime.applyAppearanceConfig(cfg)
-	ime.appearanceVersion = setSharedAppearanceConfig(cfg)
-	if loadedPath != primaryPath {
-		ime.saveAppearancePrefsWithReason("loadAppearancePrefs:migrate_legacy_config")
 	}
 }
 

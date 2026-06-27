@@ -45,11 +45,7 @@ func openWithDefaultApp(target string) error {
 }
 
 func customPhraseFilePath() string {
-	root := moqiAppDataDir()
-	if root == "" {
-		return ""
-	}
-	return filepath.Join(root, customPhraseFileName)
+	return ""
 }
 
 func ensureCustomPhraseFileExists() (string, error) {
@@ -76,12 +72,15 @@ func ensureCustomPhraseFileExists() (string, error) {
 }
 
 func loadCustomPhraseEntries() ([]customPhraseEntry, error) {
-	path, err := ensureCustomPhraseFileExists()
-	if err != nil {
-		return nil, err
+	path := customPhraseFilePath()
+	if path == "" {
+		return nil, nil
 	}
 	info, err := os.Stat(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
