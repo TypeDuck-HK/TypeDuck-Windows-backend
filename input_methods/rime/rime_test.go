@@ -1398,7 +1398,7 @@ func TestOnCommandSelectSchema(t *testing.T) {
 	}
 }
 
-func TestOnMenuReturnsSettingsMenu(t *testing.T) {
+func TestOnMenuDoesNotExposeLegacySettingsMenu(t *testing.T) {
 	ime := newIsolatedTestIME(t)
 
 	resp := ime.onMenu(&imecore.Request{
@@ -1407,11 +1407,11 @@ func TestOnMenuReturnsSettingsMenu(t *testing.T) {
 	}, imecore.NewResponse(16, true))
 
 	items, ok := resp.ReturnData.([]map[string]interface{})
-	if !ok || len(items) == 0 {
-		t.Fatalf("expected settings menu items, got %#v", resp.ReturnData)
+	if !ok {
+		t.Fatalf("expected empty settings menu payload, got %#v", resp.ReturnData)
 	}
-	if text, ok := items[0]["text"].(string); !ok || text == "" {
-		t.Fatalf("expected first menu item text, got %#v", items[0])
+	if resp.ReturnValue != 0 || len(items) != 0 {
+		t.Fatalf("onMenu should be unreachable in TypeDuck v1, ReturnValue=%d items=%#v", resp.ReturnValue, items)
 	}
 }
 
@@ -1420,8 +1420,8 @@ func TestBuildMenuIncludesHelpLinks(t *testing.T) {
 
 	items := ime.buildMenu()
 	want := map[string]int{
-		"帮助文档(&H)": ID_HELP_DOCS,
-		"参加讨论(&J)": ID_DISCUSSIONS,
+		"說明文件(&H) / Help": ID_HELP_DOCS,
+		"參與討論(&J) / Discuss": ID_DISCUSSIONS,
 	}
 	for text, id := range want {
 		found := false
@@ -1477,7 +1477,7 @@ func TestBuildMenuIncludesSchemaSubmenu(t *testing.T) {
 	var schemaMenu map[string]interface{}
 	for _, item := range items {
 		text, _ := item["text"].(string)
-		if text == "输入方案(&I)" {
+		if text == "輸入方案(&I) / Input Schema" {
 			schemaMenu = item
 			break
 		}
@@ -1523,11 +1523,11 @@ func TestBuildMenuIncludesSchemeSetSubmenuBeforeSchemaMenu(t *testing.T) {
 	var schemeSetMenu map[string]interface{}
 	for i, item := range items {
 		text, _ := item["text"].(string)
-		if text == "切换方案集" {
+		if text == "切換方案集 / Switch Scheme Set" {
 			schemeSetIndex = i
 			schemeSetMenu = item
 		}
-		if text == "输入方案(&I)" {
+		if text == "輸入方案(&I) / Input Schema" {
 			schemaIndex = i
 		}
 	}
@@ -1572,13 +1572,13 @@ func TestBuildMenuPlacesUpdateConfigBeforeDeploy(t *testing.T) {
 		if text == "打开置顶短语" {
 			openIndex = i
 		}
-		if text == "打开超级简拼" {
+		if text == "開啟超級簡拼 / Open Super Abbrev" {
 			superIndex = i
 		}
 		if text == "更新配置(&P)" {
 			updateIndex = i
 		}
-		if text == "刷新配置(&R)" {
+		if text == "重新部署(&R) / Redeploy" {
 			deployIndex = i
 		}
 	}
@@ -1615,7 +1615,7 @@ func TestBuildMenuGroupsSchemeSetSchemaUpdateAndDeployWithoutSeparators(t *testi
 		indexByText[text] = i
 	}
 
-	group := []string{"切换方案集", "输入方案(&I)", "打开置顶短语", "打开超级简拼", "更新配置(&P)", "刷新配置(&R)"}
+	group := []string{"切換方案集 / Switch Scheme Set", "輸入方案(&I) / Input Schema", "打开置顶短语", "開啟超級簡拼 / Open Super Abbrev", "更新配置(&P)", "重新部署(&R) / Redeploy"}
 	for _, text := range group {
 		if _, ok := indexByText[text]; !ok {
 			t.Fatalf("expected menu item %q, got %#v", text, items)
@@ -1930,8 +1930,8 @@ func TestHandleRequestRecreatesSessionAfterSchemeSetSwitchAcrossInstances(t *tes
 		Method: "onMenu",
 		ID:     imecore.FlexibleID{String: "settings"},
 	})
-	if menuResp.ReturnValue != 1 {
-		t.Fatalf("expected second instance menu handled, got %d", menuResp.ReturnValue)
+	if menuResp.ReturnValue != 0 {
+		t.Fatalf("expected v1 onMenu to stay unreachable, got %d", menuResp.ReturnValue)
 	}
 	if secondBackend.destroySessionCalls != 1 {
 		t.Fatalf("expected second instance to destroy stale session once, got %d", secondBackend.destroySessionCalls)
@@ -2620,7 +2620,7 @@ func TestBuildMenuIncludesCandidateLayoutSubmenus(t *testing.T) {
 	var appearanceMenu map[string]interface{}
 	for _, item := range items {
 		text, _ := item["text"].(string)
-		if text == "外观(&A)" {
+		if text == "外觀(&A) / Appearance" {
 			appearanceMenu = item
 			break
 		}
@@ -2702,7 +2702,7 @@ func TestBuildMenuCapsPerRowHighlightByCandidateCount(t *testing.T) {
 	var appearanceMenu map[string]interface{}
 	for _, item := range items {
 		text, _ := item["text"].(string)
-		if text == "外观(&A)" {
+		if text == "外觀(&A) / Appearance" {
 			appearanceMenu = item
 			break
 		}
@@ -2749,7 +2749,7 @@ func TestBuildMenuDisablesPerRowSubmenuInVerticalLayout(t *testing.T) {
 	var appearanceMenu map[string]interface{}
 	for _, item := range items {
 		text, _ := item["text"].(string)
-		if text == "外观(&A)" {
+		if text == "外觀(&A) / Appearance" {
 			appearanceMenu = item
 			break
 		}
@@ -2797,7 +2797,7 @@ func TestBuildMenuIncludesCandidateCountSubmenu(t *testing.T) {
 	var appearanceMenu map[string]interface{}
 	for _, item := range items {
 		text, _ := item["text"].(string)
-		if text == "外观(&A)" {
+		if text == "外觀(&A) / Appearance" {
 			appearanceMenu = item
 			break
 		}
@@ -2838,7 +2838,7 @@ func TestBuildMenuIncludesSharedInputStateToggle(t *testing.T) {
 	items := ime.buildMenu()
 	found := false
 	for _, item := range items {
-		if text, _ := item["text"].(string); text == "输入状态共享" {
+		if text, _ := item["text"].(string); text == "輸入狀態共享 / Share Input State" {
 			found = true
 			if checked, _ := item["checked"].(bool); checked {
 				t.Fatalf("expected input state sharing disabled by default, got %#v", item)
@@ -2856,7 +2856,7 @@ func TestBuildMenuIncludesInputSettingsSubmenu(t *testing.T) {
 	items := ime.buildMenu()
 	var inputSettingsMenu map[string]interface{}
 	for _, item := range items {
-		if text, _ := item["text"].(string); text == "输入设置" {
+		if text, _ := item["text"].(string); text == "輸入設定 / Input Settings" {
 			inputSettingsMenu = item
 			break
 		}
@@ -3738,8 +3738,8 @@ func TestHandleRequestSyncsAppearanceAcrossInstances(t *testing.T) {
 		ID:     imecore.FlexibleID{String: "settings"},
 	})
 
-	if resp.ReturnValue != 1 {
-		t.Fatalf("expected onMenu handled, got %d", resp.ReturnValue)
+	if resp.ReturnValue != 0 {
+		t.Fatalf("expected v1 onMenu to stay unreachable, got %d", resp.ReturnValue)
 	}
 	if second.style.CandidateTheme != "purple" {
 		t.Fatalf("expected second instance theme synced to purple, got %q", second.style.CandidateTheme)
@@ -3769,8 +3769,8 @@ func TestHandleRequestSyncsSharedInputStateAcrossInstances(t *testing.T) {
 		ID:     imecore.FlexibleID{String: "settings"},
 	})
 
-	if resp.ReturnValue != 1 {
-		t.Fatalf("expected onMenu handled, got %d", resp.ReturnValue)
+	if resp.ReturnValue != 0 {
+		t.Fatalf("expected v1 onMenu to stay unreachable, got %d", resp.ReturnValue)
 	}
 	if !second.inputStateShared {
 		t.Fatal("expected second instance to enable shared input state")
@@ -3822,8 +3822,8 @@ func TestHandleRequestSyncsDynamicSharedOptionsAcrossInstances(t *testing.T) {
 		ID:     imecore.FlexibleID{String: "settings"},
 	})
 
-	if resp.ReturnValue != 1 {
-		t.Fatalf("expected onMenu handled, got %d", resp.ReturnValue)
+	if resp.ReturnValue != 0 {
+		t.Fatalf("expected v1 onMenu to stay unreachable, got %d", resp.ReturnValue)
 	}
 	second.createSession(nil)
 	if !second.backend.GetOption("emoji") {
@@ -3870,8 +3870,8 @@ func TestAlwaysSyncedSwitcherOptionsIgnoreInputStateSharedToggle(t *testing.T) {
 		Method: "onMenu",
 		ID:     imecore.FlexibleID{String: "settings"},
 	})
-	if resp.ReturnValue != 1 {
-		t.Fatalf("expected onMenu handled, got %d", resp.ReturnValue)
+	if resp.ReturnValue != 0 {
+		t.Fatalf("expected v1 onMenu to stay unreachable, got %d", resp.ReturnValue)
 	}
 	if !second.backend.GetOption("emoji") {
 		t.Fatal("expected non-input-state emoji option synced even with input state sharing disabled")
@@ -3900,8 +3900,8 @@ func TestHandleRequestSyncsSelectedSchemaAcrossInstances(t *testing.T) {
 		Method: "onMenu",
 		ID:     imecore.FlexibleID{String: "settings"},
 	})
-	if secondResp.ReturnValue != 1 {
-		t.Fatalf("expected onMenu handled, got %d", secondResp.ReturnValue)
+	if secondResp.ReturnValue != 0 {
+		t.Fatalf("expected v1 onMenu to stay unreachable, got %d", secondResp.ReturnValue)
 	}
 	secondBackend := second.backend.(*testBackend)
 	if secondBackend.currentSchemaID != "rime_frost_double_pinyin" {
@@ -4028,8 +4028,8 @@ func TestProcessKeySyncsSharedInputStateAfterShiftAndCapsToggle(t *testing.T) {
 				Method: "onMenu",
 				ID:     imecore.FlexibleID{String: "settings"},
 			})
-			if resp.ReturnValue != 1 {
-				t.Fatalf("expected onMenu handled, got %d", resp.ReturnValue)
+			if resp.ReturnValue != 0 {
+				t.Fatalf("expected v1 onMenu to stay unreachable, got %d", resp.ReturnValue)
 			}
 			second.createSession(nil)
 
@@ -4117,8 +4117,8 @@ func TestCreateSessionAppliesSharedInputStateAfterSharedConfigUpdateWithExisting
 		Method: "onMenu",
 		ID:     imecore.FlexibleID{String: "settings"},
 	})
-	if resp.ReturnValue != 1 {
-		t.Fatalf("expected onMenu handled, got %d", resp.ReturnValue)
+	if resp.ReturnValue != 0 {
+		t.Fatalf("expected v1 onMenu to stay unreachable, got %d", resp.ReturnValue)
 	}
 	second.createSession(nil)
 	if second.sharedInputStateNeedsApply {

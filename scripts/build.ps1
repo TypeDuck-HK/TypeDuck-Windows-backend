@@ -14,7 +14,8 @@
 
 .PARAMETER RimeDataSource
   Rime shared data directory to package. By default this prefers the TypeDuck-Web schema
-  checkout at I:\GitHub\TypeDuck-Web\schema, then falls back to rime-frost under RepoRoot.
+  checkout at I:\GitHub\TypeDuck-Web\schema. Release workflows pass the checked-out
+  TypeDuck-HK schema explicitly.
 #>
 param(
     [string] $RepoRoot = "",
@@ -236,9 +237,9 @@ if (-not $RimeDataSource) {
     if (Test-Path -LiteralPath (Join-Path $typeDuckSchema "jyut6ping3.schema.yaml")) {
         $RimeDataSource = $typeDuckSchema
     }
-    else {
-        $RimeDataSource = Join-Path $RepoRoot "rime-frost"
-    }
+}
+if (-not $RimeDataSource) {
+    throw "RimeDataSource is required when I:\GitHub\TypeDuck-Web\schema is unavailable. Use the TypeDuck-HK schema checkout on aap2-alpha."
 }
 $RimeDataDir = [System.IO.Path]::GetFullPath($RimeDataSource)
 $PackageRimeDir = Join-Path $PackageDir "input_methods\rime"

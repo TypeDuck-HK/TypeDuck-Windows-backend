@@ -1009,15 +1009,11 @@ func (ime *IME) onMenu(req *imecore.Request, resp *imecore.Response) *imecore.Re
 			buttonID = raw
 		}
 	}
-	if buttonID != "settings" && buttonID != "windows-mode-icon" {
-		resp.ReturnData = []map[string]interface{}{}
-		resp.ReturnValue = 0
-		return resp
+	if buttonID == "settings" || buttonID == "windows-mode-icon" {
+		ime.createSession(resp)
 	}
-
-	ime.createSession(resp)
-	resp.ReturnData = ime.buildMenu()
-	resp.ReturnValue = 1
+	resp.ReturnData = []map[string]interface{}{}
+	resp.ReturnValue = 0
 	return resp
 }
 

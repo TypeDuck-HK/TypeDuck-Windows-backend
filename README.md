@@ -7,6 +7,8 @@
 - 已实现并可接入 **Rime / 中州韵** 输入法
 - **fcitx5** 输入法正在接入中
 - 仓库中还包含 `simple_pinyin`、`meow` 等输入法实现或实验目录
+- TypeDuck Windows v1 打包时不再内置 `rime-frost` 子模块；CI/发布流程应显式传入 TypeDuck schema（临时为 `TypeDuck-HK/schema` 的 `aap2-alpha` 分支）作为 Rime 数据来源。
+- TypeDuck Windows v1 不暴露后端原有菜单面板：`onMenu` 只保留非视觉的 session/sync refresh，然后返回空的未处理 payload。`buildMenu` 仍留作旧功能/测试辅助代码，但不是 v1 用户可达表面。
 
 ## 仓库根目录结构
 
@@ -81,7 +83,7 @@ moqi-ime/
 
 - **`init`**：根据请求中的 **输入法 GUID** 创建会话。GUID 优先取顶层 **`id`** 字符串（与宿主约定一致）；若为空则从 **`data.guid`** 读取。在 `factories` 中查找工厂，调用 `TextService.Init`；失败则从 `clients` 中移除。
 - **`close`**：调用 `Service.Close()` 并删除客户端。
-- **`onActivate`、`onDeactivate`、`filterKeyDown`、`onKeyDown`、`filterKeyUp`、`onKeyUp`、`onCommand`、`onMenu`、`onCompositionTerminated`、`onPreservedKey`、`onLangProfileActivated`**：转发到已初始化客户端的 `HandleRequest`，再把 `*imecore.Response` 转为 map 发送。
+- **`onActivate`、`onDeactivate`、`filterKeyDown`、`onKeyDown`、`filterKeyUp`、`onKeyUp`、`onCommand`、`onMenu`、`onCompositionTerminated`、`onPreservedKey`、`onLangProfileActivated`**：转发到已初始化客户端的 `HandleRequest`，再把 `*imecore.Response` 转为 map 发送。TypeDuck Windows v1 中，Rime 的 `onMenu` 特意保持菜单表面不可达，只做非视觉 session/sync refresh，并返回空菜单与 `return = 0`。
 - **其他 `method`**：返回 `success: false` 与错误说明。
 
 ### 按键相关返回值
