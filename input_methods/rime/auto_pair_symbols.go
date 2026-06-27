@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	autoPairSymbolsFileName    = "moqi_auto_pair_symbols.txt"
-	ID_OPEN_AUTO_PAIR_SYMBOLS  = 222
+	autoPairSymbolsFileName   = "moqi_auto_pair_symbols.txt"
+	ID_OPEN_AUTO_PAIR_SYMBOLS = 222
 )
 
 var openAutoPairSymbolsTargetFunc = openWithDefaultApp
@@ -59,8 +59,8 @@ func autoPairSymbolsFilePath() string {
 
 func defaultAutoPairSymbolsFileContent() []byte {
 	var builder strings.Builder
-	builder.WriteString("# 成对符号\n")
-	builder.WriteString("# 每行一对符号\n")
+	builder.WriteString("# Auto-pair symbols\n")
+	builder.WriteString("# One symbol pair per line\n")
 	for _, rule := range builtinAutoPairRules() {
 		if rule.Open == "" || rule.Close == "" {
 			continue
@@ -181,7 +181,7 @@ func resetAutoPairSymbolsStateForTest() {
 func (ime *IME) currentAutoPairRules() []imecore.AutoPairRule {
 	rules, version, err := loadAutoPairRules()
 	if err != nil {
-		log.Printf("加载成对符号配置失败: %v", err)
+		log.Printf("failed to load auto-pair symbols config: %v", err)
 	}
 	if version != 0 {
 		ime.autoPairRulesVersion = version
@@ -195,7 +195,7 @@ func (ime *IME) currentAutoPairRules() []imecore.AutoPairRule {
 func (ime *IME) syncAutoPairRules() bool {
 	_, version, err := loadAutoPairRules()
 	if err != nil {
-		log.Printf("同步成对符号配置失败: %v", err)
+		log.Printf("failed to sync auto-pair symbols config: %v", err)
 		return false
 	}
 	if version == 0 || version == ime.autoPairRulesVersion {
@@ -209,13 +209,13 @@ func (ime *IME) openAutoPairSymbolsFile(resp *imecore.Response) bool {
 	path, err := ensureAutoPairSymbolsFileExists()
 	if err != nil {
 		if resp != nil {
-			resp.TrayNotification = trayNotification("创建成对符号文件失败", imecore.TrayNotificationIconError)
+			resp.TrayNotification = trayNotification("Failed to create auto-pair symbols file", imecore.TrayNotificationIconError)
 		}
 		return false
 	}
 	if err := openAutoPairSymbolsTargetFunc(path); err != nil {
 		if resp != nil {
-			resp.TrayNotification = trayNotification("打开成对符号文件失败", imecore.TrayNotificationIconError)
+			resp.TrayNotification = trayNotification("Failed to open auto-pair symbols file", imecore.TrayNotificationIconError)
 		}
 		return false
 	}

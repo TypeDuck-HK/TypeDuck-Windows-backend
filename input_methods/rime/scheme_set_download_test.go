@@ -128,7 +128,7 @@ func TestInstallSchemeSetPackageRejectsZipPathTraversal(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected path traversal archive to fail")
 	}
-	if !strings.Contains(err.Error(), "非法路径") {
+	if !strings.Contains(err.Error(), "invalid path") {
 		t.Fatalf("expected illegal path error, got %v", err)
 	}
 	if _, statErr := os.Stat(filepath.Join(appData, APP, "evil.txt")); !os.IsNotExist(statErr) {
@@ -161,7 +161,7 @@ func TestDownloadSchemeSetCommandInstallsSelectsAndRedeploys(t *testing.T) {
 	if resp.ReturnValue != 1 {
 		t.Fatalf("expected download command to start, got %d", resp.ReturnValue)
 	}
-	if resp.TrayNotification == nil || resp.TrayNotification.Message != "打开方案集下载窗口..." {
+	if resp.TrayNotification == nil || resp.TrayNotification.Message != "Opening scheme-set download window..." {
 		t.Fatalf("unexpected start notification: %#v", resp.TrayNotification)
 	}
 
@@ -170,7 +170,7 @@ func TestDownloadSchemeSetCommandInstallsSelectsAndRedeploys(t *testing.T) {
 	for success == nil {
 		select {
 		case asyncResp := <-asyncResponses:
-			if asyncResp.TrayNotification != nil && strings.Contains(asyncResp.TrayNotification.Message, "下载安装成功") {
+			if asyncResp.TrayNotification != nil && strings.Contains(asyncResp.TrayNotification.Message, "download and install succeeded") {
 				success = asyncResp
 			}
 		case <-timeout:

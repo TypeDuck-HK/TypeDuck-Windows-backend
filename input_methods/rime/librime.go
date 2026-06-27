@@ -1095,7 +1095,7 @@ func SyncUserData() bool {
 		return false
 	}
 	if err := rimeProcs.syncUserData.Find(); err != nil {
-		debugLogf("RIME SyncUserData 不可用: %v", err)
+		debugLogf("RIME SyncUserData unavailable: %v", err)
 		return false
 	}
 	r1, _, _ := rimeProcs.syncUserData.Call()
@@ -1129,20 +1129,20 @@ func initializeEngine(traits RimeTraits, fullcheck bool) bool {
 	start := time.Now()
 	success := false
 	defer func() {
-		debugLogf("RIME initializeEngine 完成 elapsed=%s success=%t fullcheck=%t", time.Since(start), success, fullcheck)
+		debugLogf("RIME initializeEngine completed elapsed=%s success=%t fullcheck=%t", time.Since(start), success, fullcheck)
 	}()
 
-	debugLogf("RIME initializeEngine 开始 fullcheck=%t sharedDir=%q userDir=%q prebuiltDir=%q stagingDir=%q", fullcheck, traits.SharedDataDir, traits.UserDataDir, traits.PrebuiltDataDir, traits.StagingDir)
+	debugLogf("RIME initializeEngine started fullcheck=%t sharedDir=%q userDir=%q prebuiltDir=%q stagingDir=%q", fullcheck, traits.SharedDataDir, traits.UserDataDir, traits.PrebuiltDataDir, traits.StagingDir)
 	setupStart := time.Now()
 	if !Init(traits) {
-		log.Println("RIME setup 失败")
+		log.Println("RIME setup failed")
 		return false
 	}
-	debugLogf("RIME initializeEngine setup 完成 elapsed=%s", time.Since(setupStart))
+	debugLogf("RIME initializeEngine setup completed elapsed=%s", time.Since(setupStart))
 
 	initializeStart := time.Now()
 	Initialize(traits)
-	debugLogf("RIME initializeEngine initialize 完成 elapsed=%s", time.Since(initializeStart))
+	debugLogf("RIME initializeEngine initialize completed elapsed=%s", time.Since(initializeStart))
 	var fullcheckArg uintptr
 	if fullcheck {
 		fullcheckArg = 1
@@ -1150,11 +1150,11 @@ func initializeEngine(traits RimeTraits, fullcheck bool) bool {
 	maintenanceStart := time.Now()
 	r1, _, _ := rimeProcs.startMaintenance.Call(fullcheckArg)
 	maintenanceStarted := boolResult(r1)
-	debugLogf("RIME initializeEngine startMaintenance 完成 elapsed=%s started=%t fullcheck=%t", time.Since(maintenanceStart), maintenanceStarted, fullcheck)
+	debugLogf("RIME initializeEngine startMaintenance completed elapsed=%s started=%t fullcheck=%t", time.Since(maintenanceStart), maintenanceStarted, fullcheck)
 	if maintenanceStarted {
 		joinStart := time.Now()
 		rimeProcs.joinMaintenanceThread.Call()
-		debugLogf("RIME initializeEngine joinMaintenanceThread 完成 elapsed=%s", time.Since(joinStart))
+		debugLogf("RIME initializeEngine joinMaintenanceThread completed elapsed=%s", time.Since(joinStart))
 	}
 	success = true
 	return true
@@ -1164,16 +1164,16 @@ func RimeInit(datadir, userdir, appname, appver string, fullcheck bool) bool {
 	start := time.Now()
 	success := false
 	defer func() {
-		debugLogf("RIME RimeInit 完成 elapsed=%s success=%t fullcheck=%t datadir=%q userdir=%q", time.Since(start), success, fullcheck, datadir, userdir)
+		debugLogf("RIME RimeInit completed elapsed=%s success=%t fullcheck=%t datadir=%q userdir=%q", time.Since(start), success, fullcheck, datadir, userdir)
 	}()
 
-	debugLogf("RIME RimeInit 开始 fullcheck=%t datadir=%q userdir=%q appname=%s", fullcheck, datadir, userdir, appname)
+	debugLogf("RIME RimeInit started fullcheck=%t datadir=%q userdir=%q appname=%s", fullcheck, datadir, userdir, appname)
 	mkdirStart := time.Now()
 	if err := os.MkdirAll(userdir, 0700); err != nil {
-		log.Printf("创建用户目录失败: %v", err)
+		log.Printf("failed to create user directory: %v", err)
 		return false
 	}
-	debugLogf("RIME RimeInit 创建用户目录完成 elapsed=%s", time.Since(mkdirStart))
+	debugLogf("RIME RimeInit user directory prepared elapsed=%s", time.Since(mkdirStart))
 
 	dllStart := time.Now()
 	dllPath := filepath.Join(filepath.Dir(datadir), "rime.dll")
@@ -1181,15 +1181,15 @@ func RimeInit(datadir, userdir, appname, appver string, fullcheck bool) bool {
 		dllPath = "rime.dll"
 	}
 	if err := loadRimeDLL(dllPath); err != nil {
-		log.Printf("加载 RIME DLL 失败: %v", err)
+		log.Printf("failed to load RIME DLL: %v", err)
 		return false
 	}
-	debugLogf("RIME RimeInit 加载DLL完成 elapsed=%s dllPath=%q", time.Since(dllStart), dllPath)
+	debugLogf("RIME RimeInit DLL loaded elapsed=%s dllPath=%q", time.Since(dllStart), dllPath)
 
 	logDir := rimeLogDir()
 	if logDir != "" {
 		if err := os.MkdirAll(logDir, 0o755); err != nil {
-			log.Printf("创建 RIME 日志目录失败: %v", err)
+			log.Printf("failed to create RIME log directory: %v", err)
 			logDir = ""
 		}
 	}
@@ -1210,7 +1210,7 @@ func RimeInit(datadir, userdir, appname, appver string, fullcheck bool) bool {
 	if !initializeEngine(traits, fullcheck) {
 		return false
 	}
-	debugLogf("RIME RimeInit initializeEngine 完成 elapsed=%s", time.Since(engineStart))
+	debugLogf("RIME RimeInit initializeEngine completed elapsed=%s", time.Since(engineStart))
 	success = true
 	return true
 }
@@ -1219,7 +1219,7 @@ func RimeRedeploy(datadir, userdir, appname, appver string) bool {
 	logDir := rimeLogDir()
 	if logDir != "" {
 		if err := os.MkdirAll(logDir, 0o755); err != nil {
-			log.Printf("创建 RIME 日志目录失败: %v", err)
+			log.Printf("failed to create RIME log directory: %v", err)
 			logDir = ""
 		}
 	}
@@ -1248,7 +1248,7 @@ func RimeReloadIncremental(datadir, userdir, appname, appver string) bool {
 	logDir := rimeLogDir()
 	if logDir != "" {
 		if err := os.MkdirAll(logDir, 0o755); err != nil {
-			log.Printf("创建 RIME 日志目录失败: %v", err)
+			log.Printf("failed to create RIME log directory: %v", err)
 			logDir = ""
 		}
 	}

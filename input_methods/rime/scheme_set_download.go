@@ -61,7 +61,7 @@ func (ime *IME) downloadSchemeSetAsync(req *imecore.Request, resp *imecore.Respo
 	if sharedSchemeSetDownloadState.running {
 		sharedSchemeSetDownloadState.mu.Unlock()
 		if resp != nil {
-			resp.TrayNotification = trayNotification("方案集下载已在进行中", imecore.TrayNotificationIconInfo)
+			resp.TrayNotification = trayNotification("Scheme-set download is already running", imecore.TrayNotificationIconInfo)
 		}
 		return false
 	}
@@ -69,7 +69,7 @@ func (ime *IME) downloadSchemeSetAsync(req *imecore.Request, resp *imecore.Respo
 	sharedSchemeSetDownloadState.mu.Unlock()
 
 	if resp != nil {
-		resp.TrayNotification = trayNotification("打开方案集下载窗口...", imecore.TrayNotificationIconInfo)
+		resp.TrayNotification = trayNotification("Opening scheme-set download window...", imecore.TrayNotificationIconInfo)
 	}
 
 	go func() {
@@ -84,35 +84,35 @@ func (ime *IME) downloadSchemeSetAsync(req *imecore.Request, resp *imecore.Respo
 
 		pkg, err := schemeSetDownloadPromptFunc(ctx)
 		if err != nil {
-			log.Printf("下载方案集失败: %v", err)
-			ime.sendAsyncTrayNotification(trayNotification("下载方案集失败: "+shortErrorMessage(err), imecore.TrayNotificationIconError))
+			log.Printf("scheme-set download failed: %v", err)
+			ime.sendAsyncTrayNotification(trayNotification("Scheme-set download failed: "+shortErrorMessage(err), imecore.TrayNotificationIconError))
 			return
 		}
 		displayName := strings.TrimSpace(pkg.Name)
 		if displayName == "" {
 			displayName = inferSchemeSetNameFromURL(pkg.URL)
 		}
-		debugLogf("开始下载方案集 name=%q url=%q", displayName, pkg.URL)
-		ime.sendAsyncTrayNotification(trayNotification("开始下载方案集: "+displayName, imecore.TrayNotificationIconInfo))
+		debugLogf("scheme-set download started name=%q url=%q", displayName, pkg.URL)
+		ime.sendAsyncTrayNotification(trayNotification("Scheme-set download started: "+displayName, imecore.TrayNotificationIconInfo))
 
 		name, err := installSchemeSetPackage(ctx, pkg)
 		if err != nil {
-			log.Printf("下载方案集失败: %v", err)
-			ime.sendAsyncTrayNotification(trayNotification("下载方案集失败: "+shortErrorMessage(err), imecore.TrayNotificationIconError))
+			log.Printf("scheme-set download failed: %v", err)
+			ime.sendAsyncTrayNotification(trayNotification("Scheme-set download failed: "+shortErrorMessage(err), imecore.TrayNotificationIconError))
 			return
 		}
-		debugLogf("方案集下载完成 name=%q", name)
-		ime.sendAsyncTrayNotification(trayNotification("方案集已下载，正在部署: "+name, imecore.TrayNotificationIconInfo))
+		debugLogf("scheme-set download completed name=%q", name)
+		ime.sendAsyncTrayNotification(trayNotification("Scheme set downloaded; deploying: "+name, imecore.TrayNotificationIconInfo))
 
 		ime.mu.Lock()
 		activateResp := imecore.NewResponse(0, true)
 		ok := ime.activateDownloadedSchemeSetLocked(name, req, activateResp)
 		ime.mu.Unlock()
 		if !ok {
-			ime.sendAsyncTrayNotification(trayNotification("方案集已下载，部署失败", imecore.TrayNotificationIconError))
+			ime.sendAsyncTrayNotification(trayNotification("Scheme set downloaded, but deploy failed", imecore.TrayNotificationIconError))
 			return
 		}
-		ime.sendAsyncTrayNotification(trayNotification("方案集下载安装成功: "+name, imecore.TrayNotificationIconInfo))
+		ime.sendAsyncTrayNotification(trayNotification("Scheme-set download and install succeeded: "+name, imecore.TrayNotificationIconInfo))
 	}()
 
 	return true
@@ -123,13 +123,13 @@ func (ime *IME) activateDownloadedSchemeSetLocked(name string, req *imecore.Requ
 	if !saveCurrentSchemeSetName(name) {
 		return false
 	}
-	resp.TrayNotification = schemeSetTrayNotification("方案集切换中...", imecore.TrayNotificationIconInfo)
+	resp.TrayNotification = schemeSetTrayNotification("Switching scheme set...", imecore.TrayNotificationIconInfo)
 	if ime.redeploy(req, resp) {
 		ime.schemeSetVersion = bumpSchemeSetVersion()
 		return true
 	}
 	_ = saveCurrentSchemeSetName(current)
-	resp.TrayNotification = schemeSetTrayNotification("方案集切换失败", imecore.TrayNotificationIconError)
+	resp.TrayNotification = schemeSetTrayNotification("Scheme-set switch failed", imecore.TrayNotificationIconError)
 	return false
 }
 
@@ -143,7 +143,7 @@ func installSchemeSetPackage(ctx context.Context, pkg schemeSetDownloadPackage) 
 		return "", err
 	}
 	if len(downloadURLs) == 0 {
-		return "", errors.New("方案集下载地址为空")
+		return "", errors.New("scheme-set download URL is empty")
 	}
 
 	archive, err := downloadFirstAvailableURL(ctx, downloadURLs)
@@ -156,15 +156,15 @@ func installSchemeSetPackage(ctx context.Context, pkg schemeSetDownloadPackage) 
 
 	root := moqiAppDataDir()
 	if root == "" {
-		return "", errors.New("未找到 APPDATA")
+		return "", errors.New("APPDATA was not found")
 	}
 	if err := os.MkdirAll(root, 0o755); err != nil {
-		return "", fmt.Errorf("创建墨奇用户目录失败: %w", err)
+		return "", fmt.Errorf("failed to create TypeDuck user directory: %w", err)
 	}
 
 	stagingDir, err := os.MkdirTemp(root, ".scheme-set-download-*")
 	if err != nil {
-		return "", fmt.Errorf("创建临时目录失败: %w", err)
+		return "", fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 	defer os.RemoveAll(stagingDir)
 
@@ -180,23 +180,23 @@ func installSchemeSetPackage(ctx context.Context, pkg schemeSetDownloadPackage) 
 func downloadURL(ctx context.Context, rawURL string, limit int64) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("创建下载请求失败: %w", err)
+		return nil, fmt.Errorf("failed to create download request: %w", err)
 	}
 	resp, err := schemeSetDownloadHTTPClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("下载失败: %w", err)
+		return nil, fmt.Errorf("download failed: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return nil, fmt.Errorf("下载失败: HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("download failed: HTTP %d", resp.StatusCode)
 	}
 	reader := io.LimitReader(resp.Body, limit+1)
 	data, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, fmt.Errorf("读取下载内容失败: %w", err)
+		return nil, fmt.Errorf("failed to read download content: %w", err)
 	}
 	if int64(len(data)) > limit {
-		return nil, errors.New("下载内容过大")
+		return nil, errors.New("download content is too large")
 	}
 	return data, nil
 }
@@ -204,11 +204,11 @@ func downloadURL(ctx context.Context, rawURL string, limit int64) ([]byte, error
 func validateDownloadedSchemeSetName(name string) (string, error) {
 	trimmed := strings.TrimSpace(name)
 	if trimmed == "" {
-		return "", errors.New("方案集名称为空")
+		return "", errors.New("scheme-set name is empty")
 	}
 	normalized := normalizeSchemeSetName(trimmed)
 	if normalized != trimmed {
-		return "", fmt.Errorf("非法方案集名称: %s", name)
+		return "", fmt.Errorf("invalid scheme-set name: %s", name)
 	}
 	return normalized, nil
 }
@@ -221,7 +221,7 @@ func verifySchemeSetArchiveHash(data []byte, expected string) error {
 	sum := sha256.Sum256(data)
 	actual := hex.EncodeToString(sum[:])
 	if actual != expected {
-		return fmt.Errorf("方案集校验失败")
+		return fmt.Errorf("scheme-set checksum verification failed")
 	}
 	return nil
 }
@@ -234,12 +234,12 @@ func downloadFirstAvailableURL(ctx context.Context, rawURLs []string) ([]byte, e
 			return archive, nil
 		}
 		lastErr = err
-		log.Printf("下载方案集地址失败 url=%s err=%v", rawURL, err)
+		log.Printf("scheme-set download URL failed url=%s err=%v", rawURL, err)
 	}
 	if lastErr != nil {
 		return nil, lastErr
 	}
-	return nil, errors.New("方案集下载地址为空")
+	return nil, errors.New("scheme-set download URL is empty")
 }
 
 func schemeSetDownloadURLs(rawURL string) []string {
@@ -315,7 +315,7 @@ func inferSchemeSetNameFromURL(rawURL string) string {
 func extractSchemeSetZip(data []byte, dest string) error {
 	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
-		return fmt.Errorf("打开方案集压缩包失败: %w", err)
+		return fmt.Errorf("failed to open scheme-set archive: %w", err)
 	}
 	prefix := commonZipTopLevel(reader.File)
 	var extracted uint64
@@ -327,20 +327,20 @@ func extractSchemeSetZip(data []byte, dest string) error {
 		}
 		cleanName, ok := cleanArchivePath(name)
 		if !ok {
-			return fmt.Errorf("方案集压缩包包含非法路径: %s", file.Name)
+			return fmt.Errorf("scheme-set archive contains an invalid path: %s", file.Name)
 		}
 		if cleanName == "" {
 			continue
 		}
 		if file.FileInfo().IsDir() {
 			if err := os.MkdirAll(filepath.Join(dest, filepath.FromSlash(cleanName)), 0o755); err != nil {
-				return fmt.Errorf("创建目录失败: %w", err)
+				return fmt.Errorf("failed to create directory: %w", err)
 			}
 			continue
 		}
 		extracted += file.UncompressedSize64
 		if extracted > maxSchemeSetExtractedBytes {
-			return errors.New("方案集解压后内容过大")
+			return errors.New("extracted scheme-set content is too large")
 		}
 		if err := extractSchemeSetFile(file, dest, cleanName); err != nil {
 			return err
@@ -348,7 +348,7 @@ func extractSchemeSetZip(data []byte, dest string) error {
 		filesExtracted++
 	}
 	if filesExtracted == 0 {
-		return errors.New("方案集压缩包为空")
+		return errors.New("scheme-set archive is empty")
 	}
 	return nil
 }
@@ -356,23 +356,23 @@ func extractSchemeSetZip(data []byte, dest string) error {
 func extractSchemeSetFile(file *zip.File, dest, cleanName string) error {
 	target := filepath.Join(dest, filepath.FromSlash(cleanName))
 	if !isPathInside(dest, target) {
-		return fmt.Errorf("方案集压缩包包含非法路径: %s", file.Name)
+		return fmt.Errorf("scheme-set archive contains an invalid path: %s", file.Name)
 	}
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-		return fmt.Errorf("创建目录失败: %w", err)
+		return fmt.Errorf("failed to create directory: %w", err)
 	}
 	src, err := file.Open()
 	if err != nil {
-		return fmt.Errorf("读取压缩包文件失败: %w", err)
+		return fmt.Errorf("failed to read archive file: %w", err)
 	}
 	defer src.Close()
 	dst, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.FileInfo().Mode().Perm())
 	if err != nil {
-		return fmt.Errorf("写入文件失败: %w", err)
+		return fmt.Errorf("failed to write file: %w", err)
 	}
 	defer dst.Close()
 	if _, err := io.Copy(dst, src); err != nil {
-		return fmt.Errorf("解压文件失败: %w", err)
+		return fmt.Errorf("failed to extract file: %w", err)
 	}
 	return nil
 }
@@ -417,24 +417,24 @@ func cleanArchivePath(name string) (string, bool) {
 func installExtractedSchemeSet(root, name, stagingDir string) error {
 	targetDir := filepath.Join(root, name)
 	if !isPathInside(root, targetDir) {
-		return fmt.Errorf("非法方案集安装目录: %s", name)
+		return fmt.Errorf("invalid scheme-set install directory: %s", name)
 	}
 
 	backupDir := ""
 	if _, err := os.Stat(targetDir); err == nil {
 		backupDir = filepath.Join(root, fmt.Sprintf(".%s.backup-%d", name, time.Now().UnixNano()))
 		if err := os.Rename(targetDir, backupDir); err != nil {
-			return fmt.Errorf("备份已有方案集失败: %w", err)
+			return fmt.Errorf("failed to back up existing scheme set: %w", err)
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("检查已有方案集失败: %w", err)
+		return fmt.Errorf("failed to inspect existing scheme set: %w", err)
 	}
 
 	if err := os.Rename(stagingDir, targetDir); err != nil {
 		if backupDir != "" {
 			_ = os.Rename(backupDir, targetDir)
 		}
-		return fmt.Errorf("安装方案集失败: %w", err)
+		return fmt.Errorf("failed to install scheme set: %w", err)
 	}
 	if backupDir != "" {
 		_ = os.RemoveAll(backupDir)

@@ -1201,7 +1201,7 @@ func TestOnCommandDeployRedeploysBackend(t *testing.T) {
 	if resp.TrayNotification == nil {
 		t.Fatal("expected deploy success tray notification")
 	}
-	if resp.TrayNotification.Title != "Rime" || resp.TrayNotification.Message != "重新部署成功" {
+	if resp.TrayNotification.Title != "Rime" || resp.TrayNotification.Message != "Redeploy succeeded" {
 		t.Fatalf("unexpected deploy success notification: %#v", resp.TrayNotification)
 	}
 	if resp.TrayNotification.Icon != imecore.TrayNotificationIconInfo {
@@ -1230,7 +1230,7 @@ func TestOnCommandDeployFailureReturnsErrorTrayNotification(t *testing.T) {
 	if resp.TrayNotification == nil {
 		t.Fatal("expected deploy failure tray notification")
 	}
-	if resp.TrayNotification.Title != "Rime" || resp.TrayNotification.Message != "重新部署失败" {
+	if resp.TrayNotification.Title != "Rime" || resp.TrayNotification.Message != "Redeploy failed" {
 		t.Fatalf("unexpected deploy failure notification: %#v", resp.TrayNotification)
 	}
 	if resp.TrayNotification.Icon != imecore.TrayNotificationIconError {
@@ -1352,7 +1352,7 @@ func TestOnCommandDeployIgnoresInvalidAIConfig(t *testing.T) {
 	if resp.TrayNotification == nil {
 		t.Fatal("expected deploy success tray notification")
 	}
-	if resp.TrayNotification.Title != "Rime" || resp.TrayNotification.Message != "重新部署成功" {
+	if resp.TrayNotification.Title != "Rime" || resp.TrayNotification.Message != "Redeploy succeeded" {
 		t.Fatalf("unexpected deploy success notification: %#v", resp.TrayNotification)
 	}
 	if resp.TrayNotification.Icon != imecore.TrayNotificationIconInfo {
@@ -1882,7 +1882,7 @@ func TestOnCommandSwitchesSchemeSetAndRedeploysWithSelectedUserDir(t *testing.T)
 	if got := currentSchemeSetName(); got != "Work" {
 		t.Fatalf("expected current scheme set Work after switch, got %q", got)
 	}
-	if resp.TrayNotification == nil || resp.TrayNotification.Message != "方案集切换成功" {
+	if resp.TrayNotification == nil || resp.TrayNotification.Message != "Scheme-set switch succeeded" {
 		t.Fatalf("unexpected tray notification: %#v", resp.TrayNotification)
 	}
 }
@@ -1967,7 +1967,7 @@ func TestOnCommandSwitchesSchemeSetShowsProgressAndAsyncSuccessNotification(t *t
 	if resp.ReturnValue != 1 {
 		t.Fatalf("expected scheme set command handled, got %d", resp.ReturnValue)
 	}
-	if resp.TrayNotification == nil || resp.TrayNotification.Message != "方案集切换中..." {
+	if resp.TrayNotification == nil || resp.TrayNotification.Message != "Switching scheme set..." {
 		t.Fatalf("unexpected initial tray notification: %#v", resp.TrayNotification)
 	}
 
@@ -1976,7 +1976,7 @@ func TestOnCommandSwitchesSchemeSetShowsProgressAndAsyncSuccessNotification(t *t
 		if asyncResp.TrayNotification == nil {
 			t.Fatalf("expected async tray notification, got %#v", asyncResp)
 		}
-		if asyncResp.TrayNotification.Message != "方案集切换成功" {
+		if asyncResp.TrayNotification.Message != "Scheme-set switch succeeded" {
 			t.Fatalf("unexpected async tray notification: %#v", asyncResp.TrayNotification)
 		}
 	case <-time.After(time.Second):
@@ -2011,10 +2011,10 @@ func TestOnCommandKnownSchemeSetFailureDoesNotLogUnknownCommand(t *testing.T) {
 	if resp.ReturnValue != 0 {
 		t.Fatalf("expected scheme set command to fail when redeploy fails, got %d", resp.ReturnValue)
 	}
-	if resp.TrayNotification == nil || resp.TrayNotification.Message != "方案集切换失败" {
+	if resp.TrayNotification == nil || resp.TrayNotification.Message != "Scheme-set switch failed" {
 		t.Fatalf("unexpected tray notification: %#v", resp.TrayNotification)
 	}
-	if got := buf.String(); strings.Contains(got, "未知命令") {
+	if got := buf.String(); strings.Contains(got, "unknown command") {
 		t.Fatalf("expected known scheme set command failure not to log unknown command, got %q", got)
 	}
 }
@@ -2079,7 +2079,7 @@ func TestOnCommandUpdateConfigFailsWhenUserDirNotGitRepo(t *testing.T) {
 	if resp.ReturnValue != 0 {
 		t.Fatalf("expected update config command to fail for non-git dir, got %d", resp.ReturnValue)
 	}
-	if resp.TrayNotification == nil || resp.TrayNotification.Message != "当前方案集目录不是 Git 仓库" {
+	if resp.TrayNotification == nil || resp.TrayNotification.Message != "Current scheme-set directory is not a Git repository" {
 		t.Fatalf("unexpected tray notification: %#v", resp.TrayNotification)
 	}
 }
@@ -2135,7 +2135,7 @@ func TestOnCommandUpdateConfigRunsGitPullAsyncAndNotifies(t *testing.T) {
 	if resp.ReturnValue != 1 {
 		t.Fatalf("expected update config command to succeed, got %d", resp.ReturnValue)
 	}
-	if resp.TrayNotification == nil || resp.TrayNotification.Message != "开始更新配置..." {
+	if resp.TrayNotification == nil || resp.TrayNotification.Message != "Starting configuration update..." {
 		t.Fatalf("unexpected initial tray notification: %#v", resp.TrayNotification)
 	}
 
@@ -4359,12 +4359,12 @@ func TestLoadAppearancePrefsCreatesDefaultConfigWhenMissing(t *testing.T) {
 	}
 }
 
-func TestRimeLogDirUsesMoqiIMLogUnderLocalAppData(t *testing.T) {
+func TestRimeLogDirUsesTypeDuckLogUnderLocalAppData(t *testing.T) {
 	localAppData := t.TempDir()
 	t.Setenv("LOCALAPPDATA", localAppData)
 
 	got := rimeLogDir()
-	want := filepath.Join(localAppData, "MoqiIM", "Log")
+	want := filepath.Join(localAppData, "TypeDuckIME", "Log")
 	if got != want {
 		t.Fatalf("expected rime log dir %q, got %q", want, got)
 	}
@@ -4423,7 +4423,7 @@ func TestNativeBackendRedeployRunsAsync(t *testing.T) {
 	if notification == nil {
 		t.Fatal("expected completion notification after async redeploy")
 	}
-	if notification.Message != "重新部署成功" {
+	if notification.Message != "Redeploy succeeded" {
 		t.Fatalf("unexpected completion notification: %#v", notification)
 	}
 	if backend.ConsumeNotification() != nil {

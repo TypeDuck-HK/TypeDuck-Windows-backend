@@ -541,8 +541,6 @@ func (ime *IME) customizeUIMap() map[string]interface{} {
 		"candCommentColor":          normalizeColor(ime.style.CandidateCommentColor),
 		"candCommentHighlightColor": normalizeColor(ime.style.CandidateCommentHighlightColor),
 		"inlinePreedit":             ime.inlinePreeditEnabled(),
-		"autoPairQuotes":            ime.autoPairQuotes,
-		"autoPairRules":             ime.currentAutoPairRules(),
 		"semicolonSelectSecond":     ime.semicolonSelectSecond,
 	}
 }
@@ -692,9 +690,6 @@ func (ime *IME) redeployTypeDuckSettings(req *imecore.Request, resp *imecore.Res
 	debugLogf("TypeDuck settings redeploy via incremental reload sharedDir=%q userDir=%q", sharedDir, userDir)
 	if sharedDir == "" || userDir == "" {
 		return false
-	}
-	if err := ime.reloadAIConfig(); err != nil {
-		debugLogf("TypeDuck settings reload AI config failed but continuing: %v", err)
 	}
 	ime.destroySession(resp)
 	if !reloadTypeDuckSettingsFunc(sharedDir, userDir, APP, APP_VERSION) {

@@ -34,7 +34,7 @@ func debugConfigPath() string {
 	if localAppData == "" {
 		return ""
 	}
-	return filepath.Join(localAppData, "MoqiIM", "MoqiLauncher.json")
+	return filepath.Join(localAppData, "TypeDuckIME", "TypeDuckLauncher.json")
 }
 
 func parseDebugLogLevel(raw string) debugLogLevel {

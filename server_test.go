@@ -95,7 +95,7 @@ func TestWriteFramePrefixesPayloadLength(t *testing.T) {
 	}
 }
 
-func TestOpenLogFileUsesMoqiIMLogDirectoryUnderLocalAppData(t *testing.T) {
+func TestOpenLogFileUsesTypeDuckLogDirectoryUnderLocalAppData(t *testing.T) {
 	localAppData := t.TempDir()
 	t.Setenv("LOCALAPPDATA", localAppData)
 
@@ -105,7 +105,7 @@ func TestOpenLogFileUsesMoqiIMLogDirectoryUnderLocalAppData(t *testing.T) {
 	}
 	defer logFile.Close()
 
-	want := filepath.Join(localAppData, "MoqiIM", "Log", dailyLogFileName("moqi-ime.log", time.Now()))
+	want := filepath.Join(localAppData, "TypeDuckIME", "Log", dailyLogFileName("TypeDuckBackend.log", time.Now()))
 	if got := logFile.Name(); filepath.Clean(got) != filepath.Clean(want) {
 		t.Fatalf("expected log path %q, got %q", want, got)
 	}
@@ -115,16 +115,16 @@ func TestOpenLogFileRemovesDailyLogsOlderThanRetention(t *testing.T) {
 	localAppData := t.TempDir()
 	t.Setenv("LOCALAPPDATA", localAppData)
 
-	logDir := filepath.Join(localAppData, "MoqiIM", "Log")
+	logDir := filepath.Join(localAppData, "TypeDuckIME", "Log")
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		t.Fatalf("mkdir log dir: %v", err)
 	}
 
-	oldFile := filepath.Join(logDir, dailyLogFileName("moqi-ime.log", time.Now().AddDate(0, 0, -logRetentionDays)))
+	oldFile := filepath.Join(logDir, dailyLogFileName("TypeDuckBackend.log", time.Now().AddDate(0, 0, -logRetentionDays)))
 	if err := os.WriteFile(oldFile, []byte("old"), 0644); err != nil {
 		t.Fatalf("write old log file: %v", err)
 	}
-	recentFile := filepath.Join(logDir, dailyLogFileName("moqi-ime.log", time.Now().AddDate(0, 0, -(logRetentionDays-2))))
+	recentFile := filepath.Join(logDir, dailyLogFileName("TypeDuckBackend.log", time.Now().AddDate(0, 0, -(logRetentionDays-2))))
 	if err := os.WriteFile(recentFile, []byte("recent"), 0644); err != nil {
 		t.Fatalf("write recent log file: %v", err)
 	}

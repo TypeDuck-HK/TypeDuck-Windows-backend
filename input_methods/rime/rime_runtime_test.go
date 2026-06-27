@@ -29,7 +29,7 @@ func realRimeTestDirs(t *testing.T) (string, string) {
 	}
 
 	dataDirCandidates := []string{
-		filepath.Join(`C:\Program Files (x86)\MoqiIM\moqi-ime`, "input_methods", "rime", "data"),
+		filepath.Join(`C:\Program Files (x86)\TypeDuckIME\TypeDuckRuntime`, "input_methods", "rime", "data"),
 		filepath.Join(`D:\vscode\moqi-input-method-projs\moqi-ime`, "input_methods", "rime", "data"),
 	}
 	for _, dataDir := range dataDirCandidates {

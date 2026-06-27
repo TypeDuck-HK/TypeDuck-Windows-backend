@@ -1,5 +1,4 @@
-// Moqi Go 后端主入口
-// 参考 python/server.py 实现
+// TypeDuck backend entry point.
 package main
 
 import (
@@ -16,13 +15,11 @@ import (
 	"github.com/gaboolic/moqi-ime/imecore"
 	moqipb "github.com/gaboolic/moqi-ime/proto"
 
-	// 导入输入法包
 	"github.com/gaboolic/moqi-ime/input_methods/fcitx5"
 	"github.com/gaboolic/moqi-ime/input_methods/moqi"
 	"github.com/gaboolic/moqi-ime/input_methods/rime"
 )
 
-// Client 客户端连接
 type Client struct {
 	ID              string
 	GUID            string
@@ -33,14 +30,13 @@ type Client struct {
 	Service         imecore.TextService
 }
 
-// ServiceFactory 服务工厂函数
 type ServiceFactory func(client *imecore.Client, guid string) imecore.TextService
 
 type asyncResponseSender interface {
 	SetAsyncResponseSender(func(*imecore.Response))
 }
 
-// Server Moqi 服务器
+// Server handles framed frontend requests and dispatches them to input services.
 type Server struct {
 	mu        sync.RWMutex
 	writeMu   sync.Mutex
@@ -65,7 +61,7 @@ func stringifyData(data map[string]interface{}) string {
 
 func logRequestSummary(clientID string, req *imecore.Request) {
 	log.Printf(
-		"收到请求 client=%s method=%s seq=%d id=%q commandId=%d keyCode=%d charCode=%d repeat=%d scan=%d composing=%q candidates=%d showCandidates=%t cursor=%d data=%s",
+		"request received client=%s method=%s seq=%d id=%q commandId=%d keyCode=%d charCode=%d repeat=%d scan=%d candidates=%d showCandidates=%t cursor=%d",
 		clientID,
 		req.Method,
 		req.SeqNum,
@@ -75,24 +71,21 @@ func logRequestSummary(clientID string, req *imecore.Request) {
 		req.CharCode,
 		req.RepeatCount,
 		req.ScanCode,
-		req.CompositionString,
 		len(req.CandidateList),
 		req.ShowCandidates,
 		req.CursorPos,
-		stringifyData(req.Data),
 	)
 }
 
 func logResponseSummary(clientID string, resp *imecore.Response) {
 	_, err := json.Marshal(resp)
 	if err != nil {
-		log.Printf("发送响应 client=%s marshal_error=%v", clientID, err)
+		log.Printf("response marshal failed client=%s err=%v", clientID, err)
 		return
 	}
-	//log.Printf("发送响应 client=%s payload=%s", clientID, string(raw))
+	// Keep routine response payloads out of logs because they can contain typed text.
 }
 
-// NewServer 创建服务器
 func NewServer() *Server {
 	return &Server{
 		clients:   make(map[string]*Client),
@@ -101,43 +94,41 @@ func NewServer() *Server {
 	}
 }
 
-// RegisterService 注册输入法服务工厂
 func (s *Server) RegisterService(guid string, factory ServiceFactory) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	guid = strings.ToLower(guid)
 	s.factories[guid] = factory
-	log.Printf("注册输入法服务: %s", guid)
+	log.Printf("registered input service: %s", guid)
 }
 
-// Run 运行服务器
 func (s *Server) Run() error {
 	s.running = true
-	log.Println("Moqi Go 后端服务器已启动")
+	log.Println("TypeDuck backend server started")
 
 	for s.running {
 		payload, err := readFrame(s.reader)
 		if err != nil {
 			if err.Error() == "EOF" {
-				log.Println("收到 EOF，服务器停止")
+				log.Println("received EOF; stopping backend server")
 				return nil
 			}
-			return fmt.Errorf("读取错误: %w", err)
+			return fmt.Errorf("read error: %w", err)
 		}
 
 		reqMsg, err := decodeClientRequest(payload)
 		if err != nil {
-			log.Printf("处理消息错误: %v", err)
+			log.Printf("message handling error: %v", err)
 			continue
 		}
 		clientID := reqMsg.GetClientId()
 		if clientID == "" {
-			log.Printf("处理消息错误: 缺少 client_id")
+			log.Printf("message handling error: missing client_id")
 			continue
 		}
 
 		if err := s.handleMessage(reqMsg); err != nil {
-			log.Printf("处理消息错误: %v", err)
+			log.Printf("message handling error: %v", err)
 			_ = s.sendResponse(clientID, &imecore.Response{
 				SeqNum:  int(reqMsg.GetSeqNum()),
 				Success: false,
@@ -155,33 +146,27 @@ func (s *Server) handleMessage(reqMsg *moqipb.ClientRequest) error {
 
 	// logRequestSummary(clientID, &req)
 
-	// 处理请求
 	resp := s.handleRequest(clientID, req)
 
-	// 发送响应
 	return s.sendResponse(clientID, resp)
 }
 
-// handleRequest 处理请求
 func (s *Server) handleRequest(clientID string, req *imecore.Request) *imecore.Response {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	switch req.Method {
 	case "init":
-		// Moqi 宿主在 init 时通过顶层 id 传递语言配置 GUID。
-		// 为了兼容已有调用，也接受 data.guid。
 		guid := req.ID.StringValue()
 		if guid == "" && req.Data != nil {
 			guid, _ = req.Data["guid"].(string)
 		}
 		guid = strings.ToLower(guid)
 		if guid == "" {
-			log.Printf("初始化失败 client=%s seq=%d 原因=缺少guid id=%q data=%s", clientID, req.SeqNum, req.ID.StringValue(), stringifyData(req.Data))
-			return &imecore.Response{SeqNum: req.SeqNum, Success: false, Error: "缺少 guid"}
+			log.Printf("init failed client=%s seq=%d reason=missing_guid id=%q", clientID, req.SeqNum, req.ID.StringValue())
+			return &imecore.Response{SeqNum: req.SeqNum, Success: false, Error: "missing guid"}
 		}
 
-		// 创建客户端
 		client := &Client{
 			ID:              clientID,
 			GUID:            guid,
@@ -191,14 +176,12 @@ func (s *Server) handleRequest(clientID string, req *imecore.Request) *imecore.R
 			IsConsole:       req.IsConsole,
 		}
 
-		// 获取输入法服务工厂
 		factory, ok := s.factories[guid]
 		if !ok {
-			log.Printf("初始化失败 client=%s seq=%d 原因=未知输入法 guid=%s", clientID, req.SeqNum, guid)
-			return &imecore.Response{SeqNum: req.SeqNum, Success: false, Error: fmt.Sprintf("未知的输入法: %s", guid)}
+			log.Printf("init failed client=%s seq=%d reason=unknown_input_method guid=%s", clientID, req.SeqNum, guid)
+			return &imecore.Response{SeqNum: req.SeqNum, Success: false, Error: fmt.Sprintf("unknown input method: %s", guid)}
 		}
 
-		// 创建输入法服务
 		moqiClient := &imecore.Client{
 			ID:              clientID,
 			GUID:            guid,
@@ -222,23 +205,22 @@ func (s *Server) handleRequest(clientID string, req *imecore.Request) *imecore.R
 					return
 				}
 				if err := s.sendResponse(clientID, &respCopy); err != nil {
-					log.Printf("发送异步响应失败 client=%s err=%v", clientID, err)
+					log.Printf("async response send failed client=%s err=%v", clientID, err)
 				}
 			})
 		}
 		s.clients[clientID] = client
 
-		// 初始化服务
 		initStart := time.Now()
 		initOK := client.Service.Init(req)
-		log.Printf("初始化服务耗时 client=%s seq=%d guid=%s elapsed=%s success=%t", clientID, req.SeqNum, guid, time.Since(initStart), initOK)
+		log.Printf("service init completed client=%s seq=%d guid=%s elapsed=%s success=%t", clientID, req.SeqNum, guid, time.Since(initStart), initOK)
 		if !initOK {
 			delete(s.clients, clientID)
-			log.Printf("初始化失败 client=%s seq=%d guid=%s 原因=Service.Init返回false", clientID, req.SeqNum, guid)
-			return &imecore.Response{SeqNum: req.SeqNum, Success: false, Error: "初始化失败"}
+			log.Printf("init failed client=%s seq=%d guid=%s reason=service_init_false", clientID, req.SeqNum, guid)
+			return &imecore.Response{SeqNum: req.SeqNum, Success: false, Error: "service initialization failed"}
 		}
 
-		log.Printf("初始化成功 client=%s seq=%d guid=%s windows8=%t metro=%t uiless=%t console=%t", clientID, req.SeqNum, guid, req.IsWindows8Above, req.IsMetroApp, req.IsUiLess, req.IsConsole)
+		log.Printf("init succeeded client=%s seq=%d guid=%s windows8=%t metro=%t uiless=%t console=%t", clientID, req.SeqNum, guid, req.IsWindows8Above, req.IsMetroApp, req.IsUiLess, req.IsConsole)
 
 		return &imecore.Response{SeqNum: req.SeqNum, Success: true}
 
@@ -246,19 +228,11 @@ func (s *Server) handleRequest(clientID string, req *imecore.Request) *imecore.R
 		if client, ok := s.clients[clientID]; ok {
 			client.Service.Close()
 			delete(s.clients, clientID)
-			log.Printf("客户端关闭 client=%s guid=%s", clientID, client.GUID)
+			log.Printf("client closed client=%s guid=%s", clientID, client.GUID)
 		} else {
-			log.Printf("客户端关闭 client=%s 但未找到已初始化会话", clientID)
+			log.Printf("client close requested for unknown session client=%s", clientID)
 		}
 		return &imecore.Response{SeqNum: req.SeqNum, Success: true}
-
-	case "cloudClipboardUpload":
-		rime.UploadCloudClipboardFromLauncher(req.CloudClipboardText)
-		return &imecore.Response{
-			SeqNum:      req.SeqNum,
-			Success:     true,
-			ReturnValue: 1,
-		}
 
 	case "typeduckSettingsUpdate":
 		return rime.ApplyTypeDuckSettingsFromLauncher(req, clientID)
@@ -270,23 +244,20 @@ func (s *Server) handleRequest(clientID string, req *imecore.Request) *imecore.R
 		"filterKeyUp", "onKeyUp", "onCommand", "onMenu", "onCompositionTerminated",
 		"onPreservedKey", "onLangProfileActivated", "highlightCandidate",
 		"selectCandidate", "changePage":
-		// 转发到输入法服务
 		client, ok := s.clients[clientID]
 		if !ok {
-			log.Printf("请求失败 client=%s seq=%d method=%s 原因=客户端未初始化", clientID, req.SeqNum, req.Method)
-			return &imecore.Response{SeqNum: req.SeqNum, Success: false, Error: "客户端未初始化"}
+			log.Printf("request failed client=%s seq=%d method=%s reason=client_not_initialized", clientID, req.SeqNum, req.Method)
+			return &imecore.Response{SeqNum: req.SeqNum, Success: false, Error: "client not initialized"}
 		}
 
-		//log.Printf("转发请求 client=%s seq=%d method=%s guid=%s", clientID, req.SeqNum, req.Method, client.GUID)
 		return client.Service.HandleRequest(req)
 
 	default:
-		log.Printf("请求失败 client=%s seq=%d method=%s 原因=未知方法", clientID, req.SeqNum, req.Method)
-		return &imecore.Response{SeqNum: req.SeqNum, Success: false, Error: fmt.Sprintf("未知的方法: %s", req.Method)}
+		log.Printf("request failed client=%s seq=%d method=%s reason=unknown_method", clientID, req.SeqNum, req.Method)
+		return &imecore.Response{SeqNum: req.SeqNum, Success: false, Error: fmt.Sprintf("unknown method: %s", req.Method)}
 	}
 }
 
-// sendResponse 发送响应
 func (s *Server) sendResponse(clientID string, resp *imecore.Response) error {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
@@ -294,29 +265,26 @@ func (s *Server) sendResponse(clientID string, resp *imecore.Response) error {
 	logResponseSummary(clientID, resp)
 	msg, err := imecore.BuildProtoResponse(clientID, resp)
 	if err != nil {
-		return fmt.Errorf("构建 protobuf 响应失败: %w", err)
+		return fmt.Errorf("failed to build protobuf response: %w", err)
 	}
 	data, err := encodeServerResponse(msg)
 	if err != nil {
-		return fmt.Errorf("序列化响应失败: %w", err)
+		return fmt.Errorf("failed to serialize response: %w", err)
 	}
 	return writeFrame(os.Stdout, data)
 }
 
-// loadInputMethods 加载所有输入法
 func loadInputMethods(server *Server) {
-	// 获取当前目录
 	exePath, err := os.Executable()
 	if err != nil {
-		log.Fatal("获取可执行文件路径失败:", err)
+		log.Fatal("failed to get executable path:", err)
 	}
 	exeDir := filepath.Dir(exePath)
 
-	// 扫描 input_methods 目录
 	inputMethodsDir := filepath.Join(exeDir, "input_methods")
 	entries, err := os.ReadDir(inputMethodsDir)
 	if err != nil {
-		log.Printf("读取 input_methods 目录失败: %v", err)
+		log.Printf("failed to read input_methods directory: %v", err)
 		return
 	}
 
@@ -325,17 +293,16 @@ func loadInputMethods(server *Server) {
 			continue
 		}
 
-		// 读取 ime.json
 		imePath := filepath.Join(inputMethodsDir, entry.Name(), "ime.json")
 		data, err := os.ReadFile(imePath)
 		if err != nil {
-			log.Printf("读取 %s 失败: %v", imePath, err)
+			log.Printf("failed to read %s: %v", imePath, err)
 			continue
 		}
 
 		var imeConfig map[string]interface{}
 		if err := json.Unmarshal(data, &imeConfig); err != nil {
-			log.Printf("解析 %s 失败: %v", imePath, err)
+			log.Printf("failed to parse %s: %v", imePath, err)
 			continue
 		}
 
@@ -343,31 +310,26 @@ func loadInputMethods(server *Server) {
 		name, _ := imeConfig["name"].(string)
 		guid = strings.ToLower(guid)
 		if guid == "" {
-			log.Printf("%s 缺少 guid", entry.Name())
+			log.Printf("%s is missing guid", entry.Name())
 			continue
 		}
 
-		log.Printf("加载输入法: %s (%s)", name, guid)
+		log.Printf("loading input method: %s (%s)", name, guid)
 
-		// 根据输入法名称注册不同的服务实现
 		switch entry.Name() {
 		case "rime":
-			// RIME 输入法
 			server.RegisterService(guid, func(client *imecore.Client, g string) imecore.TextService {
 				return rime.New(client)
 			})
 		case "moqi":
-			// 拼音输入法
 			server.RegisterService(guid, func(client *imecore.Client, g string) imecore.TextService {
 				return moqi.New(client)
 			})
 		case "fcitx5":
-			// Fcitx5 输入法
 			server.RegisterService(guid, func(client *imecore.Client, g string) imecore.TextService {
 				return fcitx5.New(client)
 			})
 		default:
-			// 默认使用拼音输入法
 			server.RegisterService(guid, func(client *imecore.Client, g string) imecore.TextService {
 				return moqi.New(client)
 			})
@@ -379,12 +341,12 @@ func openLogFile() (*os.File, error) {
 	candidates := []string{}
 
 	if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
-		candidates = append(candidates, filepath.Join(localAppData, "MoqiIM", "Log", "moqi-ime.log"))
+		candidates = append(candidates, filepath.Join(localAppData, "TypeDuckIME", "Log", "TypeDuckBackend.log"))
 	}
 	if tempDir := os.TempDir(); tempDir != "" {
-		candidates = append(candidates, filepath.Join(tempDir, "MoqiIM", "Log", "moqi-ime.log"))
+		candidates = append(candidates, filepath.Join(tempDir, "TypeDuckIME", "Log", "TypeDuckBackend.log"))
 	}
-	candidates = append(candidates, "moqi-ime.log")
+	candidates = append(candidates, "TypeDuckBackend.log")
 
 	var lastErr error
 	now := time.Now()
@@ -473,12 +435,11 @@ func isDateStamp(value string) bool {
 }
 
 func main() {
-	// 日志优先写入用户可写目录，避免安装到 Program Files 后启动失败。
 	logFile, err := openLogFile()
 	if err != nil {
 		log.SetOutput(os.Stderr)
 		log.SetFlags(log.LstdFlags | log.Lshortfile)
-		log.Printf("无法创建日志文件，改用标准错误输出: %v", err)
+		log.Printf("failed to create log file; using stderr: %v", err)
 	} else {
 		defer logFile.Close()
 		log.SetOutput(logFile)
@@ -486,17 +447,14 @@ func main() {
 	}
 
 	log.Println("=" + strings.Repeat("=", 50))
-	log.Println("Moqi Go 后端启动")
+	log.Println("TypeDuck backend started")
 	log.Println("=" + strings.Repeat("=", 50))
 
-	// 创建服务器
 	server := NewServer()
 
-	// 加载所有输入法
 	loadInputMethods(server)
 
-	// 运行服务器
 	if err := server.Run(); err != nil {
-		log.Fatal("服务器错误:", err)
+		log.Fatal("server error:", err)
 	}
 }

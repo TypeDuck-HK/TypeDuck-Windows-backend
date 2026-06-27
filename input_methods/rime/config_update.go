@@ -66,7 +66,7 @@ func gitPull(dir string) (string, error) {
 func (ime *IME) updateConfigAsync(resp *imecore.Response) bool {
 	if _, err := gitLookPathFunc("git"); err != nil {
 		if resp != nil {
-			resp.TrayNotification = trayNotification("未检测到 Git 命令", imecore.TrayNotificationIconError)
+			resp.TrayNotification = trayNotification("Git command was not found", imecore.TrayNotificationIconError)
 		}
 		return false
 	}
@@ -75,7 +75,7 @@ func (ime *IME) updateConfigAsync(resp *imecore.Response) bool {
 	isRepo, err := gitIsRepoFunc(userDir)
 	if err != nil || !isRepo {
 		if resp != nil {
-			resp.TrayNotification = trayNotification("当前方案集目录不是 Git 仓库", imecore.TrayNotificationIconError)
+			resp.TrayNotification = trayNotification("Current scheme-set directory is not a Git repository", imecore.TrayNotificationIconError)
 		}
 		return false
 	}
@@ -84,7 +84,7 @@ func (ime *IME) updateConfigAsync(resp *imecore.Response) bool {
 	if sharedConfigUpdateState.running {
 		sharedConfigUpdateState.mu.Unlock()
 		if resp != nil {
-			resp.TrayNotification = trayNotification("更新配置已在进行中", imecore.TrayNotificationIconInfo)
+			resp.TrayNotification = trayNotification("Configuration update is already running", imecore.TrayNotificationIconInfo)
 		}
 		return false
 	}
@@ -92,7 +92,7 @@ func (ime *IME) updateConfigAsync(resp *imecore.Response) bool {
 	sharedConfigUpdateState.mu.Unlock()
 
 	if resp != nil {
-		resp.TrayNotification = trayNotification("开始更新配置...", imecore.TrayNotificationIconInfo)
+		resp.TrayNotification = trayNotification("Starting configuration update...", imecore.TrayNotificationIconInfo)
 	}
 
 	go func(targetDir string) {
@@ -104,15 +104,15 @@ func (ime *IME) updateConfigAsync(resp *imecore.Response) bool {
 
 		output, err := gitPullFunc(targetDir)
 		if err != nil {
-			message := "更新配置失败"
+			message := "Configuration update failed"
 			if output != "" {
-				message = "更新配置失败: " + summarizeGitOutput(output)
+				message = "Configuration update failed: " + summarizeGitOutput(output)
 			}
 			ime.sendAsyncTrayNotification(trayNotification(message, imecore.TrayNotificationIconError))
 			return
 		}
 
-		message := "更新配置成功"
+		message := "Configuration update succeeded"
 		if output != "" {
 			message = summarizeGitSuccessMessage(output)
 		}
@@ -125,7 +125,7 @@ func (ime *IME) updateConfigAsync(resp *imecore.Response) bool {
 func summarizeGitOutput(output string) string {
 	lines := splitNonEmptyLines(output)
 	if len(lines) == 0 {
-		return "请检查 Git 输出"
+		return "Check Git output"
 	}
 	return lastLineWithinLimit(lines, 48)
 }
@@ -133,16 +133,16 @@ func summarizeGitOutput(output string) string {
 func summarizeGitSuccessMessage(output string) string {
 	lines := splitNonEmptyLines(output)
 	if len(lines) == 0 {
-		return "更新配置成功"
+		return "Configuration update succeeded"
 	}
 	last := strings.ToLower(lines[len(lines)-1])
 	switch {
 	case strings.Contains(last, "already up to date"):
-		return "配置已是最新"
+		return "Configuration is already up to date"
 	case strings.Contains(last, "already up-to-date"):
-		return "配置已是最新"
+		return "Configuration is already up to date"
 	default:
-		return "更新配置成功"
+		return "Configuration update succeeded"
 	}
 }
 

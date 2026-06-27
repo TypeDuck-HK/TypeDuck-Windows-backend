@@ -113,14 +113,14 @@ func TestServerHandleMessageInitUsesGuid(t *testing.T) {
 	guid := testSimplePinyinGUID
 
 	response := sendProtocolMessage(t, server, &moqipb.ClientRequest{
-		ClientId:         &clientID,
-		Method:           moqipb.Method_METHOD_INIT,
-		SeqNum:           1,
-		Guid:             &guid,
-		IsWindows8Above:  true,
-		IsMetroApp:       false,
-		IsUiLess:         false,
-		IsConsole:        false,
+		ClientId:        &clientID,
+		Method:          moqipb.Method_METHOD_INIT,
+		SeqNum:          1,
+		Guid:            &guid,
+		IsWindows8Above: true,
+		IsMetroApp:      false,
+		IsUiLess:        false,
+		IsConsole:       false,
 	})
 
 	if !response.GetSuccess() {
@@ -149,7 +149,7 @@ func TestServerHandleMessageUninitializedClientReturnsProtocolError(t *testing.T
 	if response.GetSeqNum() != 9 {
 		t.Fatalf("expected seqNum 9, got %#v", response.GetSeqNum())
 	}
-	if response.GetError() != "客户端未初始化" {
+	if response.GetError() != "client not initialized" {
 		t.Fatalf("expected protocol error for uninitialized client, got %#v", response.GetError())
 	}
 }

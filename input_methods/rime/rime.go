@@ -1,5 +1,4 @@
-// RIME 输入法 Go 实现
-// 对齐 python/input_methods/rime/rime_ime.py
+// RIME input method implementation.
 package rime
 
 import (
@@ -19,7 +18,7 @@ import (
 )
 
 const (
-	APP         = "Moqi"
+	APP         = "TypeDuckIME"
 	APP_VERSION = "0.01"
 
 	ID_MODE_ICON               = 1
@@ -278,20 +277,11 @@ var joinMaintenanceThreadFunc = JoinMaintenanceThread
 var openURLFunc = openWithDefaultApp
 
 func New(client *imecore.Client) imecore.TextService {
-	cfg, err := loadAIConfig()
-	if err != nil {
-		log.Printf("加载 AI 配置失败: %v", err)
-	}
-	generator := newConfiguredAIReviewGenerator(cfg)
-	actions := defaultAIActions(cfg)
 	ime := &IME{
-		TextServiceBase:   imecore.NewTextServiceBase(client),
-		style:             defaultStyle(),
-		aiEnabled:         generator != nil && len(actions) > 0,
-		aiActions:         actions,
-		aiReviewGenerator: generator,
-		aiResultCh:        make(chan aiAsyncResult, 4),
-		schemeSetVersion:  currentSchemeSetVersion(),
+		TextServiceBase:  imecore.NewTextServiceBase(client),
+		style:            defaultStyle(),
+		aiResultCh:       make(chan aiAsyncResult, 4),
+		schemeSetVersion: currentSchemeSetVersion(),
 	}
 	ime.loadAppearancePrefs()
 	return ime
@@ -330,9 +320,6 @@ func DeployTypeDuckFromLauncher(req *imecore.Request) *imecore.Response {
 		resp.Error = typeDuckSettingsApplyFailure
 		resp.TrayNotification = deployTrayNotification(false)
 		return resp
-	}
-	if err := ime.reloadAIConfig(); err != nil {
-		log.Printf("重新加载 AI 配置失败，将继续部署: %v", err)
 	}
 	success := rimeRedeployFunc(sharedDir, userDir, APP, APP_VERSION)
 	if success {
@@ -386,12 +373,8 @@ func (ime *IME) HandleRequest(req *imecore.Request) *imecore.Response {
 		ime.syncedSettingsNeedsApply = true
 		resp.CustomizeUI = ime.customizeUIMap()
 	}
-	if ime.syncAutoPairRules() {
-		resp.CustomizeUI = ime.customizeUIMap()
-	}
-	ime.consumeAIAsyncResult(resp)
 	ime.consumeBackendNotification(resp)
-	traceLogf("RIME 输入法处理请求 client=%s seq=%d method=%s", ime.Client.ID, req.SeqNum, req.Method)
+	traceLogf("RIME handling request client=%s seq=%d method=%s", ime.Client.ID, req.SeqNum, req.Method)
 
 	switch req.Method {
 	case "onActivate":
@@ -422,8 +405,6 @@ func (ime *IME) HandleRequest(req *imecore.Request) *imecore.Response {
 		return ime.changePage(req, resp)
 	case "deleteCandidateOnCurrentPage":
 		return ime.deleteCandidateOnCurrentPage(req, resp)
-	case "cloudClipboardUpload":
-		return ime.onCloudClipboardUpload(req, resp)
 	case "typeduckSettingsUpdate":
 		if ime.applyTypeDuckPreferences(req, resp) {
 			resp.ReturnValue = 1
@@ -454,18 +435,15 @@ func (ime *IME) HandleRequest(req *imecore.Request) *imecore.Response {
 }
 
 func (ime *IME) onActivate(req *imecore.Request, resp *imecore.Response) *imecore.Response {
-	debugLogf("RIME 输入法已激活")
+	debugLogf("RIME input method activated")
 	ime.activationUIRefreshPending = true
-	resp.RemovePreservedKey = append(resp.RemovePreservedKey, cloudClipboardListPreservedKeyGUID)
 	resp.ReturnValue = 1
 	return resp
 }
 
 func (ime *IME) onDeactivate(req *imecore.Request, resp *imecore.Response) *imecore.Response {
-	debugLogf("RIME 输入法已失活")
+	debugLogf("RIME input method deactivated")
 	ime.activationUIRefreshPending = false
-	ime.resetCloudClipboardState()
-	resp.RemovePreservedKey = append(resp.RemovePreservedKey, cloudClipboardListPreservedKeyGUID)
 	ime.destroySession(resp)
 	ime.removeButtons(resp)
 	resp.ReturnValue = 1
@@ -473,24 +451,12 @@ func (ime *IME) onDeactivate(req *imecore.Request, resp *imecore.Response) *imec
 }
 
 func (ime *IME) onPreservedKey(req *imecore.Request, resp *imecore.Response) *imecore.Response {
-	if ime.handleCloudClipboardPreservedKey(req, resp) {
-		return resp
-	}
 	resp.ReturnValue = 0
 	return resp
 }
 
 func (ime *IME) filterKeyDown(req *imecore.Request, resp *imecore.Response) *imecore.Response {
 	defer ime.flushPendingActivationUI(req, resp)
-	if ime.handleAIKeyDownFilter(req, resp) {
-		return resp
-	}
-	if ime.handleCloudClipboardKeyDownFilter(req, resp) {
-		return resp
-	}
-	if ime.handleCustomPhraseKeyDownFilter(req, resp) {
-		return resp
-	}
 	if ime.handleSuperAbbrevKeyDownFilter(req, resp) {
 		return resp
 	}
@@ -544,15 +510,6 @@ func (ime *IME) flushPendingActivationUI(req *imecore.Request, resp *imecore.Res
 }
 
 func (ime *IME) filterKeyUp(req *imecore.Request, resp *imecore.Response) *imecore.Response {
-	if ime.handleAIKeyUpFilter(req, resp) {
-		return resp
-	}
-	if ime.handleCloudClipboardKeyUpFilter(req, resp) {
-		return resp
-	}
-	if ime.handleCustomPhraseKeyUpFilter(req, resp) {
-		return resp
-	}
 	if ime.handleSuperAbbrevKeyUpFilter(req, resp) {
 		return resp
 	}
@@ -606,15 +563,6 @@ func (ime *IME) updateLangStatusIfInputStateChanged(req *imecore.Request, resp *
 }
 
 func (ime *IME) onKeyDown(req *imecore.Request, resp *imecore.Response) *imecore.Response {
-	if ime.handleAIKeyDown(req, resp) {
-		return resp
-	}
-	if ime.handleCloudClipboardKeyDown(req, resp) {
-		return resp
-	}
-	if ime.handleCustomPhraseKeyDown(req, resp) {
-		return resp
-	}
 	if ime.handleSuperAbbrevKeyDown(req, resp) {
 		return resp
 	}
@@ -630,15 +578,6 @@ func (ime *IME) onKeyDown(req *imecore.Request, resp *imecore.Response) *imecore
 }
 
 func (ime *IME) onKeyUp(req *imecore.Request, resp *imecore.Response) *imecore.Response {
-	if ime.handleAIKeyUp(req, resp) {
-		return resp
-	}
-	if ime.handleCloudClipboardKeyUp(req, resp) {
-		return resp
-	}
-	if ime.handleCustomPhraseKeyUp(req, resp) {
-		return resp
-	}
 	if ime.handleSuperAbbrevKeyUp(req, resp) {
 		return resp
 	}
@@ -674,19 +613,7 @@ func (ime *IME) deleteCandidateOnCurrentPage(req *imecore.Request, resp *imecore
 }
 
 func (ime *IME) onCompositionTerminated(req *imecore.Request, resp *imecore.Response) *imecore.Response {
-	if ime.aiPending && !req.Forced {
-		debugLogf("AI 请求等待中，忽略非强制 composition terminated，保留异步结果 seq=%d prompt=%q", ime.aiRequestSeq, ime.aiPrompt)
-	} else {
-		ime.resetAIState()
-	}
-	if (ime.cloudClipboardActive || ime.cloudClipboardPending) && !req.Forced {
-		debugLogf("云剪贴板候选显示中，忽略非强制 composition terminated active=%t pending=%t", ime.cloudClipboardActive, ime.cloudClipboardPending)
-		ime.fillCloudClipboardResponse(resp)
-		resp.ReturnValue = 1
-		return resp
-	}
-	ime.resetCloudClipboardState()
-	ime.resetCustomPhraseOverlay()
+	ime.resetAIState()
 	ime.resetSuperAbbrevOverlay()
 	ime.resetSecondSelectionShortcut()
 	ime.resetTrackedRawInput()
@@ -983,33 +910,13 @@ func (ime *IME) onCommand(req *imecore.Request, resp *imecore.Response) *imecore
 			resp.ReturnValue = 0
 			return resp
 		}
-	case ID_UPDATE_CONFIG:
-		if !ime.updateConfigAsync(resp) {
-			resp.ReturnValue = 0
-			return resp
-		}
-	case ID_DOWNLOAD_SCHEME_SET:
-		if !ime.downloadSchemeSetAsync(req, resp) {
-			resp.ReturnValue = 0
-			return resp
-		}
 	case ID_APPEARANCE_IMPORT_SKIN:
 		if !ime.importAppearanceSkinAsync(resp) {
 			resp.ReturnValue = 0
 			return resp
 		}
-	case ID_OPEN_CUSTOM_PHRASE:
-		if !ime.openCustomPhraseFile(resp) {
-			resp.ReturnValue = 0
-			return resp
-		}
 	case ID_OPEN_SUPER_ABBREV:
 		if !ime.openSuperAbbrevFile(resp) {
-			resp.ReturnValue = 0
-			return resp
-		}
-	case ID_OPEN_AUTO_PAIR_SYMBOLS:
-		if !ime.openAutoPairSymbolsFile(resp) {
 			resp.ReturnValue = 0
 			return resp
 		}
@@ -1023,7 +930,7 @@ func (ime *IME) onCommand(req *imecore.Request, resp *imecore.Response) *imecore
 		logDir := rimeLogDir()
 		if logDir != "" {
 			if err := os.MkdirAll(logDir, 0o755); err != nil {
-				log.Printf("创建 RIME 日志目录失败 %s: %v", logDir, err)
+				log.Printf("failed to create RIME log directory %s: %v", logDir, err)
 			}
 		}
 		ime.openPath(logDir)
@@ -1031,35 +938,12 @@ func (ime *IME) onCommand(req *imecore.Request, resp *imecore.Response) *imecore
 		ime.openURL(helpDocsURL)
 	case ID_DISCUSSIONS:
 		ime.openURL(discussionURL)
-	case ID_WEBDAV_SETTINGS:
-		if !ime.openWebDAVSettingsAsync(resp) {
-			resp.ReturnValue = 0
-			return resp
-		}
-	case ID_CLOUD_CLIPBOARD_SETTINGS:
-		if !ime.openCloudClipboardSettingsAsync(resp) {
-			resp.ReturnValue = 0
-			return resp
-		}
-	case ID_CLOUD_CLIPBOARD_ENABLED:
-		ime.toggleCloudClipboardEnabled(resp)
-	case ID_CLOUD_CLIPBOARD_TEST:
-		ime.testCloudClipboardConnectionCommand(resp)
 	default:
 		previousCandidateCount := ime.candidateCount()
 		if commandID == ID_SHARED_INPUT_STATE {
 			ime.toggleInputStateShared()
 			resp.ReturnValue = 1
 			ime.updateLangStatus(req, resp)
-			return resp
-		}
-		if commandID == ID_INPUT_AUTO_PAIR_QUOTES {
-			ime.autoPairQuotes = !ime.autoPairQuotes
-			ime.saveAppearancePrefsWithReason("onCommand:toggle_auto_pair_quotes")
-			resp.CustomizeUI = ime.customizeUIMap()
-			ime.fillResponseFromCurrentState(resp)
-			ime.updateLangStatus(req, resp)
-			resp.ReturnValue = 1
 			return resp
 		}
 		if commandID == ID_INPUT_SEMICOLON_SELECT_SECOND {
@@ -1106,7 +990,7 @@ func (ime *IME) onCommand(req *imecore.Request, resp *imecore.Response) *imecore
 			resp.ReturnValue = 0
 			return resp
 		}
-		log.Printf("未知命令: %d", commandID)
+		log.Printf("unknown command: %d", commandID)
 		resp.ReturnValue = 0
 		return resp
 	}
@@ -1142,13 +1026,13 @@ func (ime *IME) Init(req *imecore.Request) bool {
 	firstRun := false
 	backendAvailable := false
 	defer func() {
-		debugLogf("RIME 输入法初始化完成 elapsed=%s firstRun=%t backendAvailable=%t", time.Since(initStart), firstRun, backendAvailable)
+		debugLogf("RIME init completed elapsed=%s firstRun=%t backendAvailable=%t", time.Since(initStart), firstRun, backendAvailable)
 	}()
 
-	debugLogf("RIME 输入法初始化")
+	debugLogf("RIME input method initializing")
 	exePath, err := os.Executable()
 	if err != nil {
-		log.Printf("获取可执行文件路径失败，原生 RIME 不可用: %v", err)
+		log.Printf("failed to get executable path; native RIME unavailable: %v", err)
 		return true
 	}
 
@@ -1167,23 +1051,23 @@ func (ime *IME) Init(req *imecore.Request) bool {
 	}
 
 	if userDir == "" {
-		log.Println("未找到 APPDATA，原生 RIME 不可用")
+		log.Println("APPDATA is not set; native RIME unavailable")
 		return true
 	}
 	info, statErr := os.Stat(userDir)
 	if statErr != nil {
 		if os.IsNotExist(statErr) {
 			if err := os.MkdirAll(userDir, 0o700); err != nil {
-				log.Printf("创建用户 RIME 数据目录失败，原生 RIME 不可用: %v", err)
+				log.Printf("failed to create user RIME data directory; native RIME unavailable: %v", err)
 				return true
 			}
 			firstRun = true
 		} else {
-			log.Printf("检查用户 RIME 数据目录失败，原生 RIME 不可用: %v", statErr)
+			log.Printf("failed to inspect user RIME data directory; native RIME unavailable: %v", statErr)
 			return true
 		}
 	} else if !info.IsDir() {
-		log.Printf("用户 RIME 数据目录不是目录，原生 RIME 不可用: %s", userDir)
+		log.Printf("user RIME data path is not a directory; native RIME unavailable: %s", userDir)
 		return true
 	}
 
@@ -1194,7 +1078,7 @@ func (ime *IME) Init(req *imecore.Request) bool {
 		backendAvailable = true
 	} else {
 		ime.backend = nil
-		log.Printf("RIME 原生后端不可用 sharedDir=%s userDir=%s", sharedDir, userDir)
+		log.Printf("native RIME backend unavailable sharedDir=%s userDir=%s", sharedDir, userDir)
 		if runtime.GOOS == "android" {
 			return false
 		}
@@ -1248,7 +1132,7 @@ func shouldFullCheckRimeDeploy(sharedDir, userDir string, firstRun bool) bool {
 
 func (ime *IME) Close() {
 	ime.destroySession(nil)
-	debugLogf("RIME 输入法关闭")
+	debugLogf("RIME input method closed")
 }
 
 func (ime *IME) BackendAvailable() bool {
@@ -1584,7 +1468,7 @@ func (ime *IME) triggerAIReview(action *aiAction) bool {
 				result.Err = fmt.Errorf("empty AI result")
 			}
 		}
-		debugLogf("AI 异步结果返回 seq=%d prompt=%q candidates=%d err=%v", requestSeq, composition, len(result.Candidates), result.Err)
+		debugLogf("AI async result returned seq=%d candidates=%d err=%v", requestSeq, len(result.Candidates), result.Err)
 		if sender != nil {
 			var updateResp *imecore.Response
 			ime.mu.Lock()
@@ -1608,13 +1492,13 @@ func (ime *IME) triggerAIReview(action *aiAction) bool {
 
 func (ime *IME) applyAIAsyncResult(result aiAsyncResult) bool {
 	if result.RequestSeq != ime.aiRequestSeq {
-		debugLogf("AI 异步结果丢弃: seq mismatch result=%d current=%d", result.RequestSeq, ime.aiRequestSeq)
+		debugLogf("AI async result discarded: seq mismatch result=%d current=%d", result.RequestSeq, ime.aiRequestSeq)
 		return false
 	}
 	ime.aiPending = false
 	if result.Err != nil {
 		ime.aiError = result.Err.Error()
-		log.Printf("AI 写好评失败: %v", result.Err)
+		log.Printf("AI review generation failed: %v", result.Err)
 		ime.resetAIState()
 		return false
 	}
@@ -1635,12 +1519,12 @@ func (ime *IME) applyAIAsyncResult(result aiAsyncResult) bool {
 	if ime.backend != nil && ime.backendReady() {
 		state := ime.backend.State()
 		if strings.TrimSpace(state.Composition) != strings.TrimSpace(result.Prompt) {
-			debugLogf("AI 异步结果丢弃: composition changed result=%q current=%q", result.Prompt, state.Composition)
+			debugLogf("AI async result discarded: composition changed")
 			ime.resetAIState()
 			return false
 		}
 	}
-	debugLogf("AI 异步结果已应用 seq=%d candidates=%d", result.RequestSeq, len(ime.aiCandidates))
+	debugLogf("AI async result applied seq=%d candidates=%d", result.RequestSeq, len(ime.aiCandidates))
 	return ime.aiActive
 }
 
@@ -2038,7 +1922,7 @@ func (ime *IME) logShortcutTrace(req *imecore.Request, isUp bool, translatedKeyC
 		eventType = "up"
 	}
 	debugLogf(
-		"RIME 快捷键追踪 event=%s keyCode=%d charCode=%d translatedKey=%d modifiers=%d ctrl=%t alt=%t backendRet=%t handled=%t composing=%t",
+		"RIME shortcut trace event=%s keyCode=%d charCode=%d translatedKey=%d modifiers=%d ctrl=%t alt=%t backendRet=%t handled=%t composing=%t",
 		eventType,
 		req.KeyCode,
 		req.CharCode,
@@ -2103,7 +1987,7 @@ func (ime *IME) syncSchemeSetVersion(resp *imecore.Response) {
 	if ime.schemeSetVersion == version {
 		return
 	}
-	debugLogf("方案集版本变化，销毁旧 RIME session old=%d new=%d", ime.schemeSetVersion, version)
+	debugLogf("scheme set version changed; destroying old RIME session old=%d new=%d", ime.schemeSetVersion, version)
 	ime.schemeSetVersion = version
 	ime.syncedSettingsNeedsApply = true
 	if ime.inputStateShared {
@@ -2183,7 +2067,7 @@ func (ime *IME) redeploy(req *imecore.Request, resp *imecore.Response) bool {
 	sharedDir := ime.sharedDir()
 	userDir := ime.userDir()
 	if sharedDir == "" || userDir == "" {
-		log.Printf("重新部署失败，sharedDir=%q userDir=%q", sharedDir, userDir)
+		log.Printf("redeploy failed sharedDir=%q userDir=%q", sharedDir, userDir)
 		return false
 	}
 
@@ -2191,11 +2075,8 @@ func (ime *IME) redeploy(req *imecore.Request, resp *imecore.Response) bool {
 		ime.backend = newNativeBackend()
 	}
 	if ime.backend == nil {
-		log.Println("重新部署失败，原生 RIME 后端不可用")
+		log.Println("redeploy failed; native RIME backend unavailable")
 		return false
-	}
-	if err := ime.reloadAIConfig(); err != nil {
-		log.Printf("重新加载 AI 配置失败，将继续部署: %v", err)
 	}
 	ime.destroySession(resp)
 
@@ -2204,7 +2085,7 @@ func (ime *IME) redeploy(req *imecore.Request, resp *imecore.Response) bool {
 	}
 
 	if !ime.backend.Redeploy(sharedDir, userDir) {
-		log.Printf("重新部署失败，sharedDir=%q userDir=%q", sharedDir, userDir)
+		log.Printf("redeploy failed sharedDir=%q userDir=%q", sharedDir, userDir)
 		return false
 	}
 	resp.TrayNotification = deployTrayNotification(true)
@@ -2241,10 +2122,10 @@ func deployTrayNotification(success bool) *imecore.TrayNotification {
 		Icon:  imecore.TrayNotificationIconInfo,
 	}
 	if success {
-		notification.Message = "重新部署成功"
+		notification.Message = "Redeploy succeeded"
 		return notification
 	}
-	notification.Message = "重新部署失败"
+	notification.Message = "Redeploy failed"
 	notification.Icon = imecore.TrayNotificationIconError
 	return notification
 }
@@ -2271,10 +2152,10 @@ func (ime *IME) sendSchemeSetCompletionNotificationAsync(backend rimeBackend) {
 					}
 					notification := native.ConsumeNotification()
 					if notification != nil && notification.Icon == imecore.TrayNotificationIconError {
-						ime.sendAsyncTrayNotification(schemeSetTrayNotification("方案集切换失败", imecore.TrayNotificationIconError))
+						ime.sendAsyncTrayNotification(schemeSetTrayNotification("Scheme-set switch failed", imecore.TrayNotificationIconError))
 						return
 					}
-					ime.sendAsyncTrayNotification(schemeSetTrayNotification("方案集切换成功", imecore.TrayNotificationIconInfo))
+					ime.sendAsyncTrayNotification(schemeSetTrayNotification("Scheme-set switch succeeded", imecore.TrayNotificationIconInfo))
 					return
 				case <-timeout.C:
 					return
@@ -2285,7 +2166,7 @@ func (ime *IME) sendSchemeSetCompletionNotificationAsync(backend rimeBackend) {
 	}
 	go func() {
 		time.Sleep(10 * time.Millisecond)
-		ime.sendAsyncTrayNotification(schemeSetTrayNotification("方案集切换成功", imecore.TrayNotificationIconInfo))
+		ime.sendAsyncTrayNotification(schemeSetTrayNotification("Scheme-set switch succeeded", imecore.TrayNotificationIconInfo))
 	}()
 }
 
@@ -2298,7 +2179,7 @@ func (ime *IME) reloadAIConfig() error {
 	ime.aiActions = defaultAIActions(cfg)
 	ime.aiEnabled = ime.aiReviewGenerator != nil && len(ime.aiActions) > 0
 	ime.resetAIState()
-	debugLogf("AI 配置已重新加载 enabled=%t actions=%d", ime.aiEnabled, len(ime.aiActions))
+	debugLogf("AI config reloaded enabled=%t actions=%d", ime.aiEnabled, len(ime.aiActions))
 	return nil
 }
 
@@ -2351,7 +2232,6 @@ func (ime *IME) fillResponseFromBackendState(resp *imecore.Response, allowCommit
 	}
 	state, ok := ime.currentVisibleBackendState()
 	if !ok {
-		ime.resetCustomPhraseOverlay()
 		ime.clearResponse(resp)
 		ime.keyComposing = false
 		return false
@@ -2362,7 +2242,6 @@ func (ime *IME) fillResponseFromBackendState(resp *imecore.Response, allowCommit
 		ime.resetTrackedRawInput()
 	}
 	if state.Composition == "" {
-		ime.resetCustomPhraseOverlay()
 		ime.resetTrackedRawInput()
 		ime.clearResponse(resp)
 		ime.keyComposing = false
@@ -2374,36 +2253,16 @@ func (ime *IME) fillResponseFromBackendState(resp *imecore.Response, allowCommit
 	resp.CompositionCursor = caretIndex
 	resp.SelStart = compositionCaretRuneIndex(state.Composition, state.SelStart)
 	resp.SelEnd = compositionCaretRuneIndex(state.Composition, state.SelEnd)
-	customPhraseCandidates := ime.visibleCustomPhraseCandidatesForState(state)
 	if _, overlay, ok := ime.currentSuperAbbrevOverlay(); ok {
-		if len(customPhraseCandidates) > 0 {
-			customPhraseCandidates = applySuperAbbrevOverlayToCandidates(customPhraseCandidates, overlay)
-		} else {
-			state = applySuperAbbrevOverlay(state, overlay)
-		}
+		state = applySuperAbbrevOverlay(state, overlay)
 	}
-	if len(customPhraseCandidates) > 0 && len(state.Candidates) > 0 {
-		state.Candidates = filterDuplicateCandidatesByText(state.Candidates, customPhraseCandidates)
+	if len(state.Candidates) > ime.candidatePageLimit(state) {
+		state.Candidates = append([]candidateItem(nil), state.Candidates[:ime.candidatePageLimit(state)]...)
 	}
-	remainingCandidateCount := ime.candidatePageLimit(state) - len(customPhraseCandidates)
-	if remainingCandidateCount < 0 {
-		customPhraseCandidates = customPhraseCandidates[:ime.candidatePageLimit(state)]
-		remainingCandidateCount = 0
-	}
-	if len(state.Candidates) > remainingCandidateCount {
-		state.Candidates = append([]candidateItem(nil), state.Candidates[:remainingCandidateCount]...)
-	}
-	if len(state.Candidates) > 0 || len(customPhraseCandidates) > 0 {
-		resp.CandidateList = append(ime.formatCandidates(customPhraseCandidates), ime.formatCandidates(state.Candidates)...)
-		resp.CandidateEntries = append(ime.candidateEntries(customPhraseCandidates), ime.candidateEntries(state.Candidates)...)
-		if len(customPhraseCandidates) > 0 {
-			if ime.customPhraseCursor < 0 {
-				ime.customPhraseCursor = 0
-			} else if ime.customPhraseCursor >= len(resp.CandidateList) {
-				ime.customPhraseCursor = len(resp.CandidateList) - 1
-			}
-			resp.CandidateCursor = ime.customPhraseCursor
-		} else if state.CandidateCursor < 0 {
+	if len(state.Candidates) > 0 {
+		resp.CandidateList = ime.formatCandidates(state.Candidates)
+		resp.CandidateEntries = ime.candidateEntries(state.Candidates)
+		if state.CandidateCursor < 0 {
 			resp.CandidateCursor = 0
 		} else if state.CandidateCursor >= len(state.Candidates) {
 			resp.CandidateCursor = len(state.Candidates) - 1
@@ -2424,9 +2283,6 @@ func (ime *IME) fillResponseFromBackendState(resp *imecore.Response, allowCommit
 			HasNext:     !state.IsLastPage,
 		}
 		selectKeys := state.SelectKeys
-		if len(customPhraseCandidates) > 0 && len(resp.CandidateList) <= len(aiSelectKeys) {
-			selectKeys = aiSelectKeys
-		}
 		ime.updateResponseSelectKeys(resp, selectKeys, len(resp.CandidateList))
 	} else {
 		resp.CandidateList = []string{}
@@ -2639,13 +2495,13 @@ func (ime *IME) handleSchemeSetCommand(commandID int, req *imecore.Request, resp
 	}
 	targetDir := filepath.Join(root, target)
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
-		log.Printf("创建方案集目录失败 %s: %v", targetDir, err)
+		log.Printf("failed to create scheme set directory %s: %v", targetDir, err)
 		return false
 	}
 	if !saveCurrentSchemeSetName(target) {
 		return false
 	}
-	resp.TrayNotification = schemeSetTrayNotification("方案集切换中...", imecore.TrayNotificationIconInfo)
+	resp.TrayNotification = schemeSetTrayNotification("Switching scheme set...", imecore.TrayNotificationIconInfo)
 	if ime.redeploy(req, resp) {
 		ime.schemeSetVersion = bumpSchemeSetVersion()
 		if _, ok := ime.backend.(*nativeBackend); ok {
@@ -2653,15 +2509,15 @@ func (ime *IME) handleSchemeSetCommand(commandID int, req *imecore.Request, resp
 			return true
 		}
 		if ime.asyncResponseSender != nil {
-			resp.TrayNotification = schemeSetTrayNotification("方案集切换中...", imecore.TrayNotificationIconInfo)
+			resp.TrayNotification = schemeSetTrayNotification("Switching scheme set...", imecore.TrayNotificationIconInfo)
 			ime.sendSchemeSetCompletionNotificationAsync(ime.backend)
 			return true
 		}
-		resp.TrayNotification = schemeSetTrayNotification("方案集切换成功", imecore.TrayNotificationIconInfo)
+		resp.TrayNotification = schemeSetTrayNotification("Scheme-set switch succeeded", imecore.TrayNotificationIconInfo)
 		return true
 	}
 	_ = saveCurrentSchemeSetName(current)
-	resp.TrayNotification = schemeSetTrayNotification("方案集切换失败", imecore.TrayNotificationIconError)
+	resp.TrayNotification = schemeSetTrayNotification("Scheme-set switch failed", imecore.TrayNotificationIconError)
 	return false
 }
 
@@ -3318,10 +3174,6 @@ func (ime *IME) buildMenu() []map[string]interface{} {
 		items = append(items, map[string]interface{}{"text": ""})
 	}
 	if len(schemeSetItems) > 0 {
-		schemeSetItems = append(schemeSetItems,
-			map[string]interface{}{"text": ""},
-			map[string]interface{}{"id": ID_DOWNLOAD_SCHEME_SET, "text": "下载方案集(&D)"},
-		)
 		items = append(items, map[string]interface{}{
 			"text":    "切换方案集",
 			"submenu": schemeSetItems,
@@ -3335,9 +3187,7 @@ func (ime *IME) buildMenu() []map[string]interface{} {
 	}
 	if len(schemeSetItems) > 0 || len(schemaItems) > 0 {
 		items = append(items,
-			map[string]interface{}{"id": ID_OPEN_CUSTOM_PHRASE, "text": "打开置顶短语"},
 			map[string]interface{}{"id": ID_OPEN_SUPER_ABBREV, "text": "打开超级简拼"},
-			map[string]interface{}{"id": ID_UPDATE_CONFIG, "text": "更新配置(&P)"},
 			map[string]interface{}{"id": ID_DEPLOY, "text": "刷新配置(&R)"},
 			map[string]interface{}{"text": ""},
 		)
@@ -3429,11 +3279,8 @@ func (ime *IME) buildMenu() []map[string]interface{} {
 			{"id": ID_APPEARANCE_IMPORT_SKIN, "text": "导入皮肤"},
 		}},
 		map[string]interface{}{"text": "输入设置", "submenu": []map[string]interface{}{
-			{"id": ID_INPUT_AUTO_PAIR_QUOTES, "text": "自动插入成对符号", "checked": ime.autoPairQuotes},
-			{"id": ID_OPEN_AUTO_PAIR_SYMBOLS, "text": "打开成对符号设置"},
 			{"id": ID_INPUT_SEMICOLON_SELECT_SECOND, "text": "分号键次选", "checked": ime.semicolonSelectSecond},
 		}},
-		ime.cloudClipboardMenuSection(),
 		map[string]interface{}{"text": "打开文件夹(&O)", "submenu": []map[string]interface{}{
 			{"id": ID_USER_DIR, "text": "用户文件夹"},
 			{"id": ID_SHARED_DIR, "text": "共享文件夹"},
@@ -3499,7 +3346,7 @@ func rimeLogDir() string {
 	if localAppData == "" {
 		return ""
 	}
-	return filepath.Join(localAppData, "MoqiIM", "Log")
+	return filepath.Join(localAppData, "TypeDuckIME", "Log")
 }
 
 func (ime *IME) openPath(path string) {
@@ -3507,7 +3354,7 @@ func (ime *IME) openPath(path string) {
 		return
 	}
 	if err := exec.Command("explorer.exe", path).Start(); err != nil {
-		log.Printf("打开路径失败 %s: %v", path, err)
+		log.Printf("failed to open path %s: %v", path, err)
 	}
 }
 
@@ -3516,7 +3363,7 @@ func (ime *IME) openURL(rawURL string) {
 		return
 	}
 	if err := openURLFunc(rawURL); err != nil {
-		log.Printf("打开链接失败 %s: %v", rawURL, err)
+		log.Printf("failed to open URL %s: %v", rawURL, err)
 	}
 }
 

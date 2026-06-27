@@ -67,7 +67,7 @@ func ensureCustomPhraseFileExists() (string, error) {
 	}
 	content, err := loadDefaultTemplate(customPhraseTemplateFileName)
 	if err != nil {
-		content = []byte("# 置顶短语\n# 词汇<Tab>编码<Tab>权重\n")
+		content = []byte("# Custom phrases\n# Text<Tab>Code<Tab>Weight\n")
 	}
 	if err := os.WriteFile(path, content, 0o644); err != nil {
 		return "", err
@@ -158,7 +158,7 @@ func lookupCustomPhraseCandidates(composition string, limit int) []candidateItem
 
 	entries, err := loadCustomPhraseEntries()
 	if err != nil {
-		log.Printf("加载置顶短语失败: %v", err)
+		log.Printf("failed to load custom phrases: %v", err)
 		return nil
 	}
 
@@ -519,13 +519,13 @@ func (ime *IME) openCustomPhraseFile(resp *imecore.Response) bool {
 	path, err := ensureCustomPhraseFileExists()
 	if err != nil {
 		if resp != nil {
-			resp.TrayNotification = trayNotification("创建置顶短语文件失败", imecore.TrayNotificationIconError)
+			resp.TrayNotification = trayNotification("Failed to create custom phrase file", imecore.TrayNotificationIconError)
 		}
 		return false
 	}
 	if err := openCustomPhraseTargetFunc(path); err != nil {
 		if resp != nil {
-			resp.TrayNotification = trayNotification("打开置顶短语失败", imecore.TrayNotificationIconError)
+			resp.TrayNotification = trayNotification("Failed to open custom phrase file", imecore.TrayNotificationIconError)
 		}
 		return false
 	}
