@@ -1283,46 +1283,34 @@ func TestOnCommandDeployReloadsAIConfig(t *testing.T) {
 	}
 }
 
-func TestShouldFullCheckRimeDeployDetectsStaleSchemaFolder(t *testing.T) {
+func TestInitDoesNotFullCheckRimeDeployAutomatically(t *testing.T) {
+	for _, firstRun := range []bool{false, true} {
+		if automaticRimeInitFullCheck(firstRun) {
+			t.Fatalf("expected init to avoid automatic fullcheck for firstRun=%t; explicit deploy handles schema refresh", firstRun)
+		}
+	}
+}
+
+func TestSeedUserRimeBuildFromSharedCopiesBuildDirectory(t *testing.T) {
 	sharedDir := t.TempDir()
 	userDir := t.TempDir()
-	for _, dir := range []string{
-		filepath.Join(sharedDir, "build"),
-		filepath.Join(sharedDir, "opencc"),
-		filepath.Join(userDir, "build"),
-		filepath.Join(userDir, "opencc"),
-	} {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
-	files := map[string]string{
-		"default.yaml":                                   "schema_list:\n  - schema: jyut6ping3\n",
-		filepath.Join("build", "default.yaml"):           "schema_list:\n  - schema: jyut6ping3\n",
-		filepath.Join("build", "jyut6ping3.schema.yaml"): "dictionary_lookup_filter\n",
-		filepath.Join("opencc", "hk2s.json"):             "{\"name\":\"hk2s\"}\n",
-		"jyut6ping3.dict.yaml":                           "name: jyut6ping3\n",
-	}
-	for relativePath, content := range files {
-		if err := os.WriteFile(filepath.Join(sharedDir, relativePath), []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(userDir, relativePath), []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if shouldFullCheckRimeDeploy(sharedDir, userDir, false) {
-		t.Fatal("did not expect fullcheck when packaged and user schema folders match")
-	}
-	if !shouldFullCheckRimeDeploy(sharedDir, userDir, true) {
-		t.Fatal("expected fullcheck on first run")
-	}
-	if err := os.WriteFile(filepath.Join(userDir, "jyut6ping3.dict.yaml"), []byte("old dictionary\n"), 0o644); err != nil {
+	sourceFile := filepath.Join(sharedDir, "build", "nested", "jyut6ping3.schema.yaml")
+	if err := os.MkdirAll(filepath.Dir(sourceFile), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if !shouldFullCheckRimeDeploy(sharedDir, userDir, false) {
-		t.Fatal("expected fullcheck for any stale user schema-folder file")
+	if err := os.WriteFile(sourceFile, []byte("dictionary_lookup_filter\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := seedUserRimeBuildFromShared(sharedDir, userDir); err != nil {
+		t.Fatalf("expected seed success: %v", err)
+	}
+	copied, err := os.ReadFile(filepath.Join(userDir, "build", "nested", "jyut6ping3.schema.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(copied) != "dictionary_lookup_filter\n" {
+		t.Fatalf("unexpected copied build content: %q", string(copied))
 	}
 }
 
@@ -1420,7 +1408,7 @@ func TestBuildMenuIncludesHelpLinks(t *testing.T) {
 
 	items := ime.buildMenu()
 	want := map[string]int{
-		"說明文件(&H) / Help": ID_HELP_DOCS,
+		"說明文件(&H) / Help":    ID_HELP_DOCS,
 		"參與討論(&J) / Discuss": ID_DISCUSSIONS,
 	}
 	for text, id := range want {
@@ -2510,11 +2498,35 @@ func TestTypeDuckDeployFromLauncherUsesFullRedeploy(t *testing.T) {
 	var gotUserDir string
 	var gotAppName string
 	var gotAppVersion string
+	exePath, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	exeDir := filepath.Dir(exePath)
+	testRuntimeRoot := filepath.Join(exeDir, "input_methods")
+	t.Cleanup(func() {
+		_ = os.RemoveAll(testRuntimeRoot)
+	})
+	sharedBuildFile := filepath.Join(testRuntimeRoot, "rime", "data", "build", "jyut6ping3.schema.yaml")
+	if err := os.MkdirAll(filepath.Dir(sharedBuildFile), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sharedBuildFile, []byte("prebuilt schema\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
 	rimeRedeployFunc = func(datadir, userdir, appname, appver string) bool {
 		gotSharedDir = datadir
 		gotUserDir = userdir
 		gotAppName = appname
 		gotAppVersion = appver
+		seeded, err := os.ReadFile(filepath.Join(userdir, "build", "jyut6ping3.schema.yaml"))
+		if err != nil {
+			t.Fatalf("expected user build to be seeded before redeploy: %v", err)
+		}
+		if string(seeded) != "prebuilt schema\n" {
+			t.Fatalf("unexpected seeded build content: %q", string(seeded))
+		}
 		return true
 	}
 	defer func() {

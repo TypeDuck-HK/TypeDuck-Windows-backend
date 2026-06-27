@@ -2,8 +2,8 @@
 package rime
 
 import (
-	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -320,6 +320,11 @@ func DeployTypeDuckFromLauncher(req *imecore.Request) *imecore.Response {
 		resp.Error = typeDuckSettingsApplyFailure
 		resp.TrayNotification = deployTrayNotification(false)
 		return resp
+	}
+	if err := seedUserRimeBuildFromShared(sharedDir, userDir); err != nil {
+		log.Printf("failed to seed user RIME build directory before deploy; continuing with full deploy: %v", err)
+	} else {
+		debugLogf("RIME deploy seeded user build directory from shared build")
 	}
 	success := rimeRedeployFunc(sharedDir, userDir, APP, APP_VERSION)
 	if success {
@@ -1067,8 +1072,11 @@ func (ime *IME) Init(req *imecore.Request) bool {
 		return true
 	}
 
-	fullCheck := shouldFullCheckRimeDeploy(sharedDir, userDir, firstRun)
+	fullCheck := automaticRimeInitFullCheck(firstRun)
 	real := newNativeBackend()
+	if firstRun && !fullCheck {
+		debugLogf("RIME automatic fullcheck skipped on first run; use explicit deploy to refresh schemas")
+	}
 	if real != nil && real.Initialize(sharedDir, userDir, fullCheck) {
 		ime.backend = real
 		backendAvailable = true
@@ -1082,48 +1090,62 @@ func (ime *IME) Init(req *imecore.Request) bool {
 	return true
 }
 
-func shouldFullCheckRimeDeploy(sharedDir, userDir string, firstRun bool) bool {
-	if firstRun {
-		return true
+func automaticRimeInitFullCheck(firstRun bool) bool {
+	return false
+}
+
+func seedUserRimeBuildFromShared(sharedDir, userDir string) error {
+	sourceBuildDir := filepath.Join(sharedDir, "build")
+	targetBuildDir := filepath.Join(userDir, "build")
+	sourceInfo, err := os.Stat(sourceBuildDir)
+	if err != nil {
+		return fmt.Errorf("inspect shared RIME build directory: %w", err)
 	}
-	fullCheck := false
-	walkErr := filepath.WalkDir(sharedDir, func(packagePath string, entry os.DirEntry, err error) error {
+	if !sourceInfo.IsDir() {
+		return fmt.Errorf("shared RIME build path is not a directory: %s", sourceBuildDir)
+	}
+	return filepath.WalkDir(sourceBuildDir, func(sourcePath string, entry os.DirEntry, err error) error {
 		if err != nil {
-			debugLogf("RIME fullcheck marker walk error packagePath=%q err=%v", packagePath, err)
-			return err
+			return fmt.Errorf("walk shared RIME build %s: %w", sourcePath, err)
 		}
+		relativePath, relErr := filepath.Rel(sourceBuildDir, sourcePath)
+		if relErr != nil {
+			return fmt.Errorf("map shared RIME build path %s: %w", sourcePath, relErr)
+		}
+		targetPath := filepath.Join(targetBuildDir, relativePath)
 		if entry.IsDir() {
+			if err := os.MkdirAll(targetPath, 0o755); err != nil {
+				return fmt.Errorf("create user RIME build directory %s: %w", targetPath, err)
+			}
 			return nil
 		}
-		relativePath, relErr := filepath.Rel(sharedDir, packagePath)
-		if relErr != nil {
-			debugLogf("RIME fullcheck marker relative path error packagePath=%q err=%v", packagePath, relErr)
-			return relErr
+		sourceFile, err := os.Open(sourcePath)
+		if err != nil {
+			return fmt.Errorf("open shared RIME build file %s: %w", sourcePath, err)
 		}
-		userPath := filepath.Join(userDir, relativePath)
-		packageBytes, packageErr := os.ReadFile(packagePath)
-		if packageErr != nil {
-			debugLogf("RIME fullcheck marker unavailable packagePath=%q err=%v", packagePath, packageErr)
-			return packageErr
+		if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+			sourceFile.Close()
+			return fmt.Errorf("create user RIME build file directory %s: %w", targetPath, err)
 		}
-		userBytes, userErr := os.ReadFile(userPath)
-		if userErr != nil {
-			debugLogf("RIME fullcheck required missing userPath=%q err=%v", userPath, userErr)
-			fullCheck = true
-			return filepath.SkipAll
+		targetFile, err := os.OpenFile(targetPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+		if err != nil {
+			sourceFile.Close()
+			return fmt.Errorf("open user RIME build file %s: %w", targetPath, err)
 		}
-		if !bytes.Equal(packageBytes, userBytes) {
-			debugLogf("RIME fullcheck required packaged marker differs from user cache package=%q user=%q", packagePath, userPath)
-			fullCheck = true
-			return filepath.SkipAll
+		if _, err := io.Copy(targetFile, sourceFile); err != nil {
+			sourceFile.Close()
+			targetFile.Close()
+			return fmt.Errorf("copy user RIME build file %s: %w", targetPath, err)
+		}
+		if err := sourceFile.Close(); err != nil {
+			targetFile.Close()
+			return fmt.Errorf("close shared RIME build file %s: %w", sourcePath, err)
+		}
+		if err := targetFile.Close(); err != nil {
+			return fmt.Errorf("close user RIME build file %s: %w", targetPath, err)
 		}
 		return nil
 	})
-	if walkErr != nil && !fullCheck {
-		debugLogf("RIME fullcheck marker walk unavailable sharedDir=%q err=%v", sharedDir, walkErr)
-		return false
-	}
-	return fullCheck
 }
 
 func (ime *IME) Close() {

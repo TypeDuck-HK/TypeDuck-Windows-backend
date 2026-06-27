@@ -139,9 +139,9 @@ Assert-Contains $packagedSourceSchemaText 'always_show_comments:\s*true' "Packag
 Assert-Contains $packagedSourceSchemaText 'comment_format:\s*(?:\r?\n\s*-\s*xform/\^/\\f/)' "Packaged source schema must prefix main Jyutping comments with form-feed."
 Assert-Contains $packagedBuildSchemaText 'dictionary_lookup_filter' "Packaged prebuilt schema must enable TypeDuck dictionary lookup filter."
 Assert-Contains $backendBuildScriptText 'TypeDuck-Web\\schema' "Backend build must prefer TypeDuck-Web schema source."
-Assert-Contains $backendRimeGoText 'shouldFullCheckRimeDeploy' "Backend must detect stale user Rime build caches."
-Assert-Contains $backendRimeGoText 'filepath\.WalkDir\(sharedDir' "Backend stale-cache check must compare the whole packaged schema folder."
-Assert-Contains $backendRimeGoText 'filepath\.Rel\(sharedDir, packagePath\)' "Backend stale-cache check must map every packaged schema file to the user data mirror."
+Assert-Contains $backendRimeGoText 'automaticRimeInitFullCheck' "Backend init must make automatic Rime fullcheck behavior explicit."
+Assert-Contains $backendRimeGoText 'func automaticRimeInitFullCheck\(firstRun bool\) bool \{[\s\S]*?return false[\s\S]*?\}' "Backend init must not deploy schemas automatically; explicit refresh handles deployment."
+Assert-Contains $backendRimeGoText 'seedUserRimeBuildFromShared' "Explicit TypeDuck deploy must seed the user build directory from packaged prebuilt schemas."
 Assert-Contains $backendLibrimeGoText 'dictionary_lookup' "Backend must request the TypeDuck dictionary_lookup module before dictionary_lookup_filter can be created."
 Assert-Contains $backendLibrimeGoText 'Initialize\(traits\)' "Backend must pass RimeTraits modules into RimeInitialize, not initialize with default modules only."
 
