@@ -1,16 +1,16 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Build the moqi-ime runtime package.
+  Build the TypeDuck runtime package.
 
 .PARAMETER RepoRoot
-  Root of moqi-ime (defaults to the parent directory of this script).
+  Root of the backend checkout (defaults to the parent directory of this script).
 
 .PARAMETER BuildRoot
   Build output directory (default: scripts\build).
 
 .PARAMETER PackageDir
-  Packaged runtime directory (default: scripts\build\moqi-ime).
+  Packaged runtime directory (default: scripts\build\TypeDuckRuntime).
 
 .PARAMETER RimeDataSource
   Rime shared data directory to package. By default this prefers the TypeDuck-Web schema
@@ -144,14 +144,26 @@ function Prepare-RimeData {
     Write-Host "[INFO] Packaged Rime shared data prepared at `"$PackageRimeDataDir`""
 }
 
+function Remove-PackagePath {
+    param(
+        [string] $Path,
+        [string] $Label
+    )
+
+    if (Test-Path -LiteralPath $Path) {
+        Remove-Item -LiteralPath $Path -Recurse -Force
+        Write-Host "[INFO] Removed packaged $Label"
+    }
+}
+
 function Write-ServerVersionInfo {
     param(
         [string] $VersionInfoPath,
         [string] $IconPath
     )
 
-    $fileDescription = ([char]0x58A8).ToString() + ([char]0x5947) + ([char]0x8F93) + ([char]0x5165) + ([char]0x6CD5) + ([char]0x5F15) + ([char]0x64CE) + ([char]0x670D) + ([char]0x52A1)
-    $productName = ([char]0x58A8).ToString() + ([char]0x5947) + ([char]0x8F93) + ([char]0x5165) + ([char]0x6CD5)
+    $fileDescription = "TypeDuck Runtime Engine"
+    $productName = "TypeDuck Windows IME"
 
     $versionInfo = [ordered]@{
         FixedFileInfo  = [ordered]@{
@@ -210,15 +222,15 @@ if (-not $RepoRoot) { $RepoRoot = $scriptRepoRoot }
 $RepoRoot = [System.IO.Path]::GetFullPath($RepoRoot)
 
 if (-not $BuildRoot) { $BuildRoot = Join-Path $PSScriptRoot "build" }
-if (-not $PackageDir) { $PackageDir = Join-Path $BuildRoot "moqi-ime" }
+if (-not $PackageDir) { $PackageDir = Join-Path $BuildRoot "TypeDuckRuntime" }
 
 $BuildRoot = [System.IO.Path]::GetFullPath($BuildRoot)
 $PackageDir = [System.IO.Path]::GetFullPath($PackageDir)
 $ServerExe = Join-Path $PackageDir "server.exe"
-$BackendSnippet = Join-Path $BuildRoot "backends.moqi-ime.json"
 $InputMethodsDir = Join-Path $RepoRoot "input_methods"
 $IconsDir = Join-Path $RepoRoot "icons"
 $RimeDir = Join-Path $InputMethodsDir "rime"
+$canonicalAppearanceThemeRelativePath = "input_methods\rime\appearance_themes.json"
 if (-not $RimeDataSource) {
     $typeDuckSchema = "I:\GitHub\TypeDuck-Web\schema"
     if (Test-Path -LiteralPath (Join-Path $typeDuckSchema "jyut6ping3.schema.yaml")) {
@@ -236,7 +248,7 @@ $ServerVersionInfo = Join-Path $BuildRoot "server.versioninfo.json"
 $ServerResource = Join-Path $RepoRoot "resource_windows_amd64.syso"
 
 Write-Host "============================================"
-Write-Host " Moqi IME Go Backend Build Script"
+Write-Host " TypeDuck Runtime Build Script"
 Write-Host "============================================"
 
 if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
@@ -256,6 +268,8 @@ if (Test-Path -LiteralPath $PackageDir) {
 }
 Ensure-Directory -Path $PackageDir
 Write-Host "[INFO] Output directory: `"$PackageDir`""
+Remove-PackagePath -Path (Join-Path $BuildRoot "moqi-ime") -Label "legacy moqi-ime package output"
+Remove-PackagePath -Path (Join-Path $BuildRoot ("backends." + "moqi-ime.json")) -Label "legacy backend snippet"
 
 if (-not (Test-Path -LiteralPath (Join-Path $RimeDataDir "default.yaml"))) {
     throw "Missing Rime shared data directory: `"$RimeDataDir`"`nExpected default.yaml or pass -RimeDataSource."
@@ -308,16 +322,22 @@ try {
     $packageInputMethodsDir = Join-Path $PackageDir "input_methods"
     Ensure-Directory -Path $packageInputMethodsDir
     Copy-DirectoryContents -Source $RimeDir -Destination (Join-Path $packageInputMethodsDir "rime")
-    Remove-IfExists -Path (Join-Path $PackageRimeDir "icon.ico")
+    Remove-PackagePath -Path (Join-Path $PackageRimeDir "icon.ico") -Label "legacy Rime icon"
+    Remove-PackagePath -Path (Join-Path $PackageRimeDir "android") -Label "Android runtime directory"
+    Remove-PackagePath -Path (Join-Path $PackageRimeDir "cloudclipboard") -Label "cloud clipboard runtime directory"
+    Remove-PackagePath -Path (Join-Path $PackageRimeDir "templates") -Label "template runtime directory"
+    Remove-PackagePath -Path (Join-Path $PackageRimeDir "test") -Label "test fixture runtime directory"
+    Remove-PackagePath -Path (Join-Path $PackageRimeDir "icons") -Label "duplicate Rime icon directory"
+    Remove-PackagePath -Path (Join-Path $PackageRimeDir "ai_config.json") -Label "AI runtime config"
+    Remove-PackagePath -Path (Join-Path $PackageRimeDir "ime.json") -Label "backend profile metadata"
     Write-Host "[INFO] Packaged only input_methods\rime"
 
-    Write-Step -Title "Step 5: Copy shared icons"
-    if (Test-Path -LiteralPath $IconsDir) {
-        Copy-DirectoryContents -Source $IconsDir -Destination (Join-Path $PackageDir "icons")
-        Write-Host "[INFO] icons copied"
+    Write-Step -Title "Step 5: Confirm source icons"
+    if (-not (Test-Path -LiteralPath $IconsDir)) {
+        Write-Warning "Missing icons directory: `"$IconsDir`""
     }
     else {
-        Write-Warning "Missing icons directory: `"$IconsDir`""
+        Write-Host "[INFO] Source icons are available for server.exe resource stamping."
     }
 
     Write-Step -Title "Step 6: Prepare packaged Rime shared data"
@@ -325,31 +345,26 @@ try {
 
     $sourceAppearanceThemes = Join-Path $RimeDir "appearance_themes.json"
     $packageAppearanceThemes = Join-Path $PackageRimeDir "appearance_themes.json"
-    $packageAppearanceThemesData = Join-Path $PackageRimeDataDir "appearance_themes.json"
     if (-not (Test-Path -LiteralPath $sourceAppearanceThemes)) {
         throw "Missing builtin appearance themes file: `"$sourceAppearanceThemes`""
     }
     Copy-Item -LiteralPath $sourceAppearanceThemes -Destination $packageAppearanceThemes -Force
-    Copy-Item -LiteralPath $sourceAppearanceThemes -Destination $packageAppearanceThemesData -Force
-    $canonicalHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $packageAppearanceThemes).Hash
-    $dataHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $packageAppearanceThemesData).Hash
-    if ($canonicalHash -ne $dataHash) {
-        throw "Packaged appearance theme compatibility copy is not byte-identical to the canonical root file."
-    }
-    Write-Host "[INFO] Copied canonical TypeDuck appearance_themes.json into packaged Rime runtime and compatibility data path"
+    Write-Host "[INFO] Copied canonical TypeDuck appearance themes to $canonicalAppearanceThemeRelativePath"
 
     $pathsToRemove = @(
         @{ Path = Join-Path $PackageDir "input_methods\rime\data\others"; Label = "rime shared data others directory" },
-        @{ Path = Join-Path $PackageDir "input_methods\rime\icons\icons"; Label = "nested icons directory" }
+        @{ Path = Join-Path $PackageDir "input_methods\rime\data\appearance_themes.json"; Label = "duplicate data-path appearance themes" },
+        @{ Path = Join-Path $PackageDir "input_methods\rime\data\android"; Label = "Android shared data directory" },
+        @{ Path = Join-Path $PackageDir "input_methods\rime\data\cloudclipboard"; Label = "cloud clipboard shared data directory" },
+        @{ Path = Join-Path $PackageDir "input_methods\rime\data\templates"; Label = "template shared data directory" },
+        @{ Path = Join-Path $PackageDir "input_methods\rime\data\test"; Label = "test shared data directory" },
+        @{ Path = Join-Path $PackageDir "input_methods\rime\data\icons"; Label = "duplicate shared data icon directory" }
     )
     foreach ($entry in $pathsToRemove) {
-        if (Test-Path -LiteralPath $entry.Path) {
-            Remove-Item -LiteralPath $entry.Path -Recurse -Force
-            Write-Host "[INFO] Removed packaged $($entry.Label)"
-        }
+        Remove-PackagePath -Path $entry.Path -Label $entry.Label
     }
 
-    $packagedGoFiles = Get-ChildItem -LiteralPath (Join-Path $PackageDir "input_methods\rime") -Filter "*.go" -File -ErrorAction SilentlyContinue
+    $packagedGoFiles = Get-ChildItem -LiteralPath (Join-Path $PackageDir "input_methods\rime") -Filter "*.go" -Recurse -File -ErrorAction SilentlyContinue
     if ($packagedGoFiles) {
         $packagedGoFiles | Remove-Item -Force
         Write-Host "[INFO] Removed packaged Go source files"
@@ -361,17 +376,8 @@ try {
         Write-Host "[INFO] Copied rime.dll into package output"
     }
 
-    Write-Step -Title "Step 7: Generate backends.json snippet"
-    @(
-        [ordered]@{
-            name       = "moqi-ime"
-            command    = "moqi-ime\server.exe"
-            workingDir = "moqi-ime"
-            params     = ""
-        }
-    ) | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $BackendSnippet -Encoding UTF8
-
-    Write-Host "[INFO] Generated: `"$BackendSnippet`""
+    Write-Step -Title "Step 7: Finalize TypeDuck runtime package"
+    Write-Host "[INFO] Backend manifest snippets are intentionally not generated; the Windows launcher owns runtime discovery."
 }
 finally {
     Pop-Location
@@ -382,12 +388,10 @@ Write-Host "Output directory:"
 Write-Host "  `"$PackageDir`""
 Write-Host ""
 Write-Host "Install target:"
-Write-Host "  C:\Program Files (x86)\MoqiIM\moqi-ime"
+Write-Host "  C:\Program Files (x86)\TypeDuckIME\TypeDuckRuntime"
 Write-Host ""
 Write-Host "Notes:"
-Write-Host "1. backends.json in this repo uses a top-level array."
-Write-Host "2. Ensure C:\Program Files (x86)\MoqiIM\backends.json includes moqi-ime."
-Write-Host "3. Ensure C:\Program Files (x86)\MoqiIM\moqi-ime\input_methods\*\ime.json exists."
-Write-Host "4. Re-register both MoqiTextService.dll files after copying."
-Write-Host "5. Ensure C:\Program Files (x86)\MoqiIM\moqi-ime\input_methods\rime contains rime.dll."
-Write-Host "6. Start or restart MoqiLauncher.exe after install."
+Write-Host "1. The Windows launcher owns the fixed TypeDuck runtime bridge."
+Write-Host "2. Ensure TypeDuckRuntime\server.exe exists before installer staging."
+Write-Host "3. Ensure TypeDuckRuntime\input_methods\rime contains rime.dll and appearance_themes.json."
+Write-Host "4. Start or restart TypeDuckLauncher.exe after install."
