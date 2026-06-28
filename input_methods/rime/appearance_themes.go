@@ -22,7 +22,7 @@ const (
 type ThemeDefinition struct {
 	ID         string           `json:"id"`
 	Label      string           `json:"label"`
-	Source     string           `json:"source"`
+	Source     string           `json:"-"`
 	SourceFile string           `json:"source_file,omitempty"`
 	Palette    ThemePalette     `json:"palette,omitempty"`
 	Appearance appearanceConfig `json:"appearance"`
@@ -146,6 +146,9 @@ func mergeThemeDefinitions(builtinThemes, userThemes []ThemeDefinition) []ThemeD
 			continue
 		}
 		theme = normalizeThemeDefinition(theme)
+		if theme.Source == "" {
+			theme.Source = "imported"
+		}
 		if _, isBuiltin := builtinIDs[theme.ID]; isBuiltin && theme.Source == "imported" {
 			// 导入主题与内置同 id 时保留内置，导入项使用独立 id 避免“覆盖”内置主题
 			theme.ID = importedThemeIDForCollision(theme.ID)
@@ -188,9 +191,6 @@ func normalizeThemeDefinition(theme ThemeDefinition) ThemeDefinition {
 		theme.Label = theme.ID
 	}
 	theme.Source = strings.TrimSpace(theme.Source)
-	if theme.Source == "" {
-		theme.Source = "imported"
-	}
 	theme.SourceFile = strings.TrimSpace(theme.SourceFile)
 	return theme
 }

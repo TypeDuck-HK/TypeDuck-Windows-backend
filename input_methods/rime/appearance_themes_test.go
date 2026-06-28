@@ -34,15 +34,18 @@ func themeCommandForTheme(t *testing.T, themeID string) int {
 func TestBuiltinThemeRegistryLoads(t *testing.T) {
 	ensureTestThemeRegistry(t)
 	themes := listThemes()
-	if len(themes) < 14 {
-		t.Fatalf("expected at least 14 builtin themes, got %d", len(themes))
+	if len(themes) != 2 {
+		t.Fatalf("expected light/dark builtin themes, got %d", len(themes))
 	}
-	theme, ok := lookupRegisteredTheme("purple")
+	theme, ok := lookupRegisteredTheme("light")
 	if !ok {
-		t.Fatal("expected purple theme")
+		t.Fatal("expected light theme")
 	}
-	if theme.Label != "很有韵味" {
+	if theme.Label != "淺色 Light" {
 		t.Fatalf("unexpected label: %q", theme.Label)
+	}
+	if theme.Source != "" {
+		t.Fatalf("builtin themes must not expose development-source metadata, got %q", theme.Source)
 	}
 }
 
@@ -61,8 +64,8 @@ func TestAppearanceThemeMenuItems(t *testing.T) {
 	ensureTestThemeRegistry(t)
 	ime := newTestIME()
 	items := ime.themeMenuItems()
-	if len(items) < 14 {
-		t.Fatalf("expected at least 14 theme menu items, got %d", len(items))
+	if len(items) != 2 {
+		t.Fatalf("expected light/dark theme menu items, got %d", len(items))
 	}
 	if items[0]["id"].(int) != ID_APPEARANCE_THEME_BASE {
 		t.Fatalf("expected first theme command id %d, got %v", ID_APPEARANCE_THEME_BASE, items[0]["id"])

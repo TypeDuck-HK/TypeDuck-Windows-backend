@@ -1,14 +1,5 @@
 {
   "version": 2,
-  "source": {
-    "product": "TypeDuck Windows IME",
-    "web_alpha_fixture": "2026-06-23",
-    "web_alpha_commit": "db21054",
-    "notes": [
-      "Palette values are derived from TypeDuck Web alpha tailwind.config.ts and index.css.",
-      "Palette role names are native TypeDuck names, not Tailwind or DaisyUI token names."
-    ]
-  },
   "fonts": {
     "default_interface": {
       "description": "HK Chinese and English interface text",
@@ -166,7 +157,6 @@
     {
       "id": "light",
       "label": "淺色 Light",
-      "source": "typeduck-web-alpha",
       "palette": {
         "panel_background": "#ffffff",
         "dictionary_background": "#f6f3ed",
@@ -191,7 +181,6 @@
     {
       "id": "dark",
       "label": "深色 Dark",
-      "source": "typeduck-web-alpha",
       "palette": {
         "panel_background": "#201e1c",
         "dictionary_background": "#36322d",
