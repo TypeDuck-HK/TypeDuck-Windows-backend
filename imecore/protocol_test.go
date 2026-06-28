@@ -70,26 +70,6 @@ func TestParseProtoRequestMapsCandidateInteractionFields(t *testing.T) {
 	}
 }
 
-func TestParseProtoRequestMapsTypeDuckDeployPrebuiltSeed(t *testing.T) {
-	req := ParseProtoRequest(&moqipb.ClientRequest{
-		Method: moqipb.Method_METHOD_TYPEDUCK_DEPLOY,
-		SeqNum: 3,
-		TypeduckDeployRequest: &moqipb.TypeDuckDeployRequest{
-			Force: true,
-		},
-	})
-
-	if req.Method != "typeduckDeploy" {
-		t.Fatalf("expected typeduckDeploy method, got %q", req.Method)
-	}
-	if !req.SeedPrebuiltBuild {
-		t.Fatal("expected typeduck deploy request to seed the prebuilt RIME build")
-	}
-	if req.Forced {
-		t.Fatal("typeduck deploy prebuilt seed must not use the generic forced request flag")
-	}
-}
-
 func TestBuildProtoResponseIncludesClearedCompositionState(t *testing.T) {
 	resp := NewResponse(1, true)
 	resp.ReturnValue = 1

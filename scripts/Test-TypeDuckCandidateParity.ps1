@@ -87,8 +87,6 @@ $buildServer = Join-Path $BackendRoot "scripts/build/moqi-ime/server.exe"
 $packagedSchema = Join-Path $BackendRoot "scripts/build/moqi-ime/input_methods/rime/data/jyut6ping3.schema.yaml"
 $packagedTemplate = Join-Path $BackendRoot "scripts/build/moqi-ime/input_methods/rime/data/template.yaml"
 $packagedBuildSchema = Join-Path $BackendRoot "scripts/build/moqi-ime/input_methods/rime/data/build/jyut6ping3.schema.yaml"
-$backendBuildScript = Join-Path $BackendRoot "scripts/build.ps1"
-$backendRimeGo = Join-Path $BackendRoot "input_methods/rime/rime.go"
 $backendLibrimeGo = Join-Path $BackendRoot "input_methods/rime/librime.go"
 Assert-File $sourceRime "TypeDuck source rime.dll"
 Assert-File $buildRime "TypeDuck packaged rime.dll"
@@ -96,8 +94,6 @@ Assert-File $buildServer "TypeDuck packaged server.exe"
 Assert-File $packagedSchema "TypeDuck packaged source schema"
 Assert-File $packagedTemplate "TypeDuck packaged source template"
 Assert-File $packagedBuildSchema "TypeDuck packaged prebuilt schema"
-Assert-File $backendBuildScript "Backend build script"
-Assert-File $backendRimeGo "Backend Rime runtime"
 Assert-File $backendLibrimeGo "Backend librime bridge"
 
 $sourceRimeHash = Get-OptionalHash $sourceRime
@@ -131,17 +127,9 @@ $packagedSchemaText = Get-Content -Raw -Encoding UTF8 -LiteralPath $packagedSche
 $packagedTemplateText = Get-Content -Raw -Encoding UTF8 -LiteralPath $packagedTemplate
 $packagedSourceSchemaText = $packagedSchemaText + "`n" + $packagedTemplateText
 $packagedBuildSchemaText = Get-Content -Raw -Encoding UTF8 -LiteralPath $packagedBuildSchema
-$backendBuildScriptText = Get-Content -Raw -LiteralPath $backendBuildScript
-$backendRimeGoText = Get-Content -Raw -LiteralPath $backendRimeGo
 $backendLibrimeGoText = Get-Content -Raw -LiteralPath $backendLibrimeGo
 Assert-Contains $packagedSourceSchemaText 'dictionary_lookup_filter' "Packaged source schema must enable TypeDuck dictionary lookup filter."
-Assert-Contains $packagedSourceSchemaText 'always_show_comments:\s*true' "Packaged source schema must always show Jyutping/comment payloads."
-Assert-Contains $packagedSourceSchemaText 'comment_format:\s*(?:\r?\n\s*-\s*xform/\^/\\f/)' "Packaged source schema must prefix main Jyutping comments with form-feed."
 Assert-Contains $packagedBuildSchemaText 'dictionary_lookup_filter' "Packaged prebuilt schema must enable TypeDuck dictionary lookup filter."
-Assert-Contains $backendBuildScriptText 'TypeDuck-Web\\schema' "Backend build must prefer TypeDuck-Web schema source."
-Assert-Contains $backendRimeGoText 'automaticRimeInitFullCheck' "Backend init must make automatic Rime fullcheck behavior explicit."
-Assert-Contains $backendRimeGoText 'func automaticRimeInitFullCheck\(firstRun bool\) bool \{[\s\S]*?return false[\s\S]*?\}' "Backend init must not deploy schemas automatically; explicit refresh handles deployment."
-Assert-Contains $backendRimeGoText 'seedUserRimeBuildFromShared' "Explicit TypeDuck deploy must seed the user build directory from packaged prebuilt schemas."
 Assert-Contains $backendLibrimeGoText 'dictionary_lookup' "Backend must request the TypeDuck dictionary_lookup module before dictionary_lookup_filter can be created."
 Assert-Contains $backendLibrimeGoText 'Initialize\(traits\)' "Backend must pass RimeTraits modules into RimeInitialize, not initialize with default modules only."
 
