@@ -2551,6 +2551,75 @@ func TestTypeDuckDeployFromLauncherSeedsPrebuiltBuildWhenRequested(t *testing.T)
 	}
 }
 
+func TestTypeDuckDeployFromLauncherRestoresMissingPrebuiltFilesAfterDeploy(t *testing.T) {
+	t.Setenv("APPDATA", t.TempDir())
+	oldRedeployFunc := rimeRedeployFunc
+	exePath, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	exeDir := filepath.Dir(exePath)
+	testRuntimeRoot := filepath.Join(exeDir, "input_methods")
+	t.Cleanup(func() {
+		_ = os.RemoveAll(testRuntimeRoot)
+	})
+	sharedBuildDir := filepath.Join(testRuntimeRoot, "rime", "data", "build")
+	if err := os.MkdirAll(sharedBuildDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sharedBuildDir, "jyut6ping3.table.bin"), []byte("prebuilt table\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sharedBuildDir, "default.yaml"), []byte("packaged default\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var gotUserDir string
+	rimeRedeployFunc = func(datadir, userdir, appname, appver string) bool {
+		gotUserDir = userdir
+		if _, err := os.Stat(filepath.Join(userdir, "build", "jyut6ping3.table.bin")); err != nil {
+			t.Fatalf("expected prebuilt table to be available before redeploy: %v", err)
+		}
+		if err := os.RemoveAll(filepath.Join(userdir, "build")); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(userdir, "build"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(userdir, "build", "default.yaml"), []byte("generated default\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return true
+	}
+	defer func() {
+		rimeRedeployFunc = oldRedeployFunc
+	}()
+
+	resp := DeployTypeDuckFromLauncher(&imecore.Request{
+		Method:            "typeduckDeploy",
+		SeqNum:            145,
+		SeedPrebuiltBuild: true,
+	})
+
+	if !resp.Success || resp.ReturnValue != 1 {
+		t.Fatalf("expected deploy success, got %#v", resp)
+	}
+	restored, err := os.ReadFile(filepath.Join(gotUserDir, "build", "jyut6ping3.table.bin"))
+	if err != nil {
+		t.Fatalf("expected missing prebuilt table to be restored after redeploy: %v", err)
+	}
+	if string(restored) != "prebuilt table\n" {
+		t.Fatalf("unexpected restored prebuilt table content: %q", string(restored))
+	}
+	generated, err := os.ReadFile(filepath.Join(gotUserDir, "build", "default.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(generated) != "generated default\n" {
+		t.Fatalf("post-deploy seed should not overwrite generated build files, got %q", string(generated))
+	}
+}
+
 func TestTypeDuckDeployFromLauncherDoesNotSeedBuildWithoutInstallerHint(t *testing.T) {
 	t.Setenv("APPDATA", t.TempDir())
 	oldRedeployFunc := rimeRedeployFunc

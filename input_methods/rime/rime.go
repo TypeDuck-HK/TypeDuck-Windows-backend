@@ -329,6 +329,11 @@ func DeployTypeDuckFromLauncher(req *imecore.Request) *imecore.Response {
 		}
 	}
 	success := rimeRedeployFunc(sharedDir, userDir, APP, APP_VERSION)
+	if success && req.SeedPrebuiltBuild {
+		if err := seedMissingUserRimeBuildFromShared(sharedDir, userDir); err != nil {
+			log.Printf("failed to preserve missing prebuilt RIME build files after deploy: %v", err)
+		}
+	}
 	if success {
 		resp.ReturnValue = 1
 	} else {
@@ -1097,6 +1102,14 @@ func automaticRimeInitFullCheck(firstRun bool) bool {
 }
 
 func seedUserRimeBuildFromShared(sharedDir, userDir string) error {
+	return copyUserRimeBuildFromShared(sharedDir, userDir, true)
+}
+
+func seedMissingUserRimeBuildFromShared(sharedDir, userDir string) error {
+	return copyUserRimeBuildFromShared(sharedDir, userDir, false)
+}
+
+func copyUserRimeBuildFromShared(sharedDir, userDir string, overwrite bool) error {
 	sourceBuildDir := filepath.Join(sharedDir, "build")
 	targetBuildDir := filepath.Join(userDir, "build")
 	sourceInfo, err := os.Stat(sourceBuildDir)
@@ -1129,9 +1142,18 @@ func seedUserRimeBuildFromShared(sharedDir, userDir string) error {
 			sourceFile.Close()
 			return fmt.Errorf("create user RIME build file directory %s: %w", targetPath, err)
 		}
-		targetFile, err := os.OpenFile(targetPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+		openFlags := os.O_CREATE | os.O_WRONLY
+		if overwrite {
+			openFlags |= os.O_TRUNC
+		} else {
+			openFlags |= os.O_EXCL
+		}
+		targetFile, err := os.OpenFile(targetPath, openFlags, 0o644)
 		if err != nil {
 			sourceFile.Close()
+			if !overwrite && os.IsExist(err) {
+				return nil
+			}
 			return fmt.Errorf("open user RIME build file %s: %w", targetPath, err)
 		}
 		if _, err := io.Copy(targetFile, sourceFile); err != nil {
