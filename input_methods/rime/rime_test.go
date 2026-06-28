@@ -2491,7 +2491,7 @@ func TestTypeduckSettingsUpdateStaysSilentForLauncherClient(t *testing.T) {
 	}
 }
 
-func TestTypeDuckDeployFromLauncherUsesFullRedeploy(t *testing.T) {
+func TestTypeDuckDeployFromLauncherSeedsPrebuiltBuildWhenRequested(t *testing.T) {
 	t.Setenv("APPDATA", t.TempDir())
 	oldRedeployFunc := rimeRedeployFunc
 	var gotSharedDir string
@@ -2534,8 +2534,9 @@ func TestTypeDuckDeployFromLauncherUsesFullRedeploy(t *testing.T) {
 	}()
 
 	resp := DeployTypeDuckFromLauncher(&imecore.Request{
-		Method: "typeduckDeploy",
-		SeqNum: 143,
+		Method:            "typeduckDeploy",
+		SeqNum:            143,
+		SeedPrebuiltBuild: true,
 	})
 
 	if !resp.Success || resp.ReturnValue != 1 {
@@ -2547,6 +2548,47 @@ func TestTypeDuckDeployFromLauncherUsesFullRedeploy(t *testing.T) {
 	}
 	if resp.TrayNotification == nil || resp.TrayNotification.Icon != imecore.TrayNotificationIconInfo {
 		t.Fatalf("expected deploy success notification, got %#v", resp.TrayNotification)
+	}
+}
+
+func TestTypeDuckDeployFromLauncherDoesNotSeedBuildWithoutInstallerHint(t *testing.T) {
+	t.Setenv("APPDATA", t.TempDir())
+	oldRedeployFunc := rimeRedeployFunc
+	exePath, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	exeDir := filepath.Dir(exePath)
+	testRuntimeRoot := filepath.Join(exeDir, "input_methods")
+	t.Cleanup(func() {
+		_ = os.RemoveAll(testRuntimeRoot)
+	})
+	sharedBuildFile := filepath.Join(testRuntimeRoot, "rime", "data", "build", "jyut6ping3.schema.yaml")
+	if err := os.MkdirAll(filepath.Dir(sharedBuildFile), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sharedBuildFile, []byte("prebuilt schema\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rimeRedeployFunc = func(datadir, userdir, appname, appver string) bool {
+		if _, err := os.Stat(filepath.Join(userdir, "build", "jyut6ping3.schema.yaml")); !os.IsNotExist(err) {
+			t.Fatalf("expected deploy without installer seed hint not to seed user build, stat err=%v", err)
+		}
+		return true
+	}
+	defer func() {
+		rimeRedeployFunc = oldRedeployFunc
+	}()
+
+	resp := DeployTypeDuckFromLauncher(&imecore.Request{
+		Method:            "typeduckDeploy",
+		SeqNum:            144,
+		SeedPrebuiltBuild: false,
+	})
+
+	if !resp.Success || resp.ReturnValue != 1 {
+		t.Fatalf("expected deploy success, got %#v", resp)
 	}
 }
 

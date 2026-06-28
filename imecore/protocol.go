@@ -49,6 +49,7 @@ type Request struct {
 	IsKeyboardOpen     bool
 	Opened             bool
 	Forced             bool
+	SeedPrebuiltBuild  bool
 	CommandType        int
 	CharCode           int
 	KeyCode            int
@@ -248,6 +249,9 @@ func ParseProtoRequest(msg *moqipb.ClientRequest) *Request {
 	}
 	if msg.PageBackward != nil {
 		req.PageBackward = msg.GetPageBackward()
+	}
+	if deploy := msg.GetTypeduckDeployRequest(); deploy != nil {
+		req.SeedPrebuiltBuild = deploy.GetForce()
 	}
 	if text := msg.GetCloudClipboardText(); text != "" {
 		req.CloudClipboardText = text

@@ -321,10 +321,12 @@ func DeployTypeDuckFromLauncher(req *imecore.Request) *imecore.Response {
 		resp.TrayNotification = deployTrayNotification(false)
 		return resp
 	}
-	if err := seedUserRimeBuildFromShared(sharedDir, userDir); err != nil {
-		log.Printf("failed to seed user RIME build directory before deploy; continuing with full deploy: %v", err)
-	} else {
-		debugLogf("RIME deploy seeded user build directory from shared build")
+	if req.SeedPrebuiltBuild {
+		if err := seedUserRimeBuildFromShared(sharedDir, userDir); err != nil {
+			log.Printf("failed to seed user RIME build directory before deploy; continuing with full deploy: %v", err)
+		} else {
+			debugLogf("RIME deploy seeded user build directory from shared build")
+		}
 	}
 	success := rimeRedeployFunc(sharedDir, userDir, APP, APP_VERSION)
 	if success {
