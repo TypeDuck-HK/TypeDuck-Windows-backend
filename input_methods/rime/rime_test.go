@@ -2601,6 +2601,19 @@ func TestTypeduckSettingsUpdateWritesCustomYamlFallbackWhenLeversFails(t *testin
 	}
 }
 
+func TestTypeDuckPreferencesPathUsesRoamingAppData(t *testing.T) {
+	appData := t.TempDir()
+	localAppData := t.TempDir()
+	t.Setenv("APPDATA", appData)
+	t.Setenv("LOCALAPPDATA", localAppData)
+
+	got := typeDuckPreferencesPath()
+	want := filepath.Join(appData, APP, typeDuckPreferencesFileName)
+	if got != want {
+		t.Fatalf("expected TypeDuck preferences under roaming APPDATA, got %q want %q", got, want)
+	}
+}
+
 func TestFillResponseIncludesTypeDuckCandidatePageMetadata(t *testing.T) {
 	ime := newIsolatedTestIME(t)
 	backend := ime.backend.(*testBackend)

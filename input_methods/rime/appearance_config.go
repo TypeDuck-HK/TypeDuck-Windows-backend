@@ -160,7 +160,7 @@ func userAppearanceConfigPath() string {
 }
 
 func typeDuckPreferencesPath() string {
-	root := os.Getenv("LOCALAPPDATA")
+	root := os.Getenv("APPDATA")
 	if root == "" {
 		var err error
 		root, err = os.UserConfigDir()
