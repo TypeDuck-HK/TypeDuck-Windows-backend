@@ -110,16 +110,6 @@ function Get-GoTool {
     return $toolPath
 }
 
-function Copy-DirectoryContents {
-    param(
-        [string] $Source,
-        [string] $Destination
-    )
-
-    Ensure-Directory -Path $Destination
-    Copy-Item -Path (Join-Path $Source "*") -Destination $Destination -Recurse -Force
-}
-
 function Prepare-RimeData {
     param(
         [string] $RimeDataDir,
@@ -130,17 +120,7 @@ function Prepare-RimeData {
     Ensure-Directory -Path $PackageRimeDataDir
 
     Write-Host "[INFO] Copying shared data from `"$RimeDataDir`" ..."
-    Copy-DirectoryContents -Source $RimeDataDir -Destination $PackageRimeDataDir
-
-    Remove-IfExists -Path (Join-Path $PackageRimeDataDir ".github")
-    Remove-IfExists -Path (Join-Path $PackageRimeDataDir ".git")
-
-    foreach ($name in @("README.md", "LICENSE")) {
-        $path = Join-Path $PackageRimeDataDir $name
-        if (Test-Path -LiteralPath $path) {
-            Remove-Item -LiteralPath $path -Force
-        }
-    }
+    Copy-Item -Path (Join-Path $RimeDataDir "*") -Destination $PackageRimeDataDir -Recurse
 
     Write-Host "[INFO] Packaged Rime shared data prepared at `"$PackageRimeDataDir`""
 }
@@ -231,7 +211,6 @@ $ServerExe = Join-Path $PackageDir "server.exe"
 $InputMethodsDir = Join-Path $RepoRoot "input_methods"
 $IconsDir = Join-Path $RepoRoot "icons"
 $RimeDir = Join-Path $InputMethodsDir "rime"
-$canonicalAppearanceThemeRelativePath = "input_methods\rime\appearance_themes.json"
 if (-not $RimeDataSource) {
     $typeDuckSchema = "I:\GitHub\TypeDuck-Web\schema"
     if (Test-Path -LiteralPath (Join-Path $typeDuckSchema "jyut6ping3.schema.yaml")) {
@@ -321,17 +300,18 @@ try {
     }
 
     $packageInputMethodsDir = Join-Path $PackageDir "input_methods"
-    Ensure-Directory -Path $packageInputMethodsDir
-    Copy-DirectoryContents -Source $RimeDir -Destination (Join-Path $packageInputMethodsDir "rime")
-    Remove-PackagePath -Path (Join-Path $PackageRimeDir "icon.ico") -Label "legacy Rime icon"
-    Remove-PackagePath -Path (Join-Path $PackageRimeDir "android") -Label "Android runtime directory"
-    Remove-PackagePath -Path (Join-Path $PackageRimeDir "cloudclipboard") -Label "cloud clipboard runtime directory"
-    Remove-PackagePath -Path (Join-Path $PackageRimeDir "templates") -Label "template runtime directory"
-    Remove-PackagePath -Path (Join-Path $PackageRimeDir "test") -Label "test fixture runtime directory"
-    Remove-PackagePath -Path (Join-Path $PackageRimeDir "icons") -Label "duplicate Rime icon directory"
-    Remove-PackagePath -Path (Join-Path $PackageRimeDir "ai_config.json") -Label "AI runtime config"
-    Remove-PackagePath -Path (Join-Path $PackageRimeDir "ime.json") -Label "backend profile metadata"
-    Write-Host "[INFO] Packaged only input_methods\rime"
+    Ensure-Directory -Path (Join-Path $packageInputMethodsDir "rime")
+    $runtimeFiles = @("appearance_themes.json", "rime.dll")
+    foreach ($name in $runtimeFiles) {
+        $sourcePath = Join-Path $RimeDir $name
+        $destinationPath = Join-Path $PackageRimeDir $name
+        if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+            throw "Missing required Rime runtime file: `"$sourcePath`""
+        }
+
+        Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
+        Write-Host "[INFO] Packaged input_methods\rime\$name"
+    }
 
     Write-Step -Title "Step 5: Confirm source icons"
     if (-not (Test-Path -LiteralPath $IconsDir)) {
@@ -343,39 +323,6 @@ try {
 
     Write-Step -Title "Step 6: Prepare packaged Rime shared data"
     Prepare-RimeData -RimeDataDir $RimeDataDir -PackageRimeDataDir $PackageRimeDataDir
-
-    $sourceAppearanceThemes = Join-Path $RimeDir "appearance_themes.json"
-    $packageAppearanceThemes = Join-Path $PackageRimeDir "appearance_themes.json"
-    if (-not (Test-Path -LiteralPath $sourceAppearanceThemes)) {
-        throw "Missing builtin appearance themes file: `"$sourceAppearanceThemes`""
-    }
-    Copy-Item -LiteralPath $sourceAppearanceThemes -Destination $packageAppearanceThemes -Force
-    Write-Host "[INFO] Copied canonical TypeDuck appearance themes to $canonicalAppearanceThemeRelativePath"
-
-    $pathsToRemove = @(
-        @{ Path = Join-Path $PackageDir "input_methods\rime\data\others"; Label = "rime shared data others directory" },
-        @{ Path = Join-Path $PackageDir "input_methods\rime\data\appearance_themes.json"; Label = "duplicate data-path appearance themes" },
-        @{ Path = Join-Path $PackageDir "input_methods\rime\data\android"; Label = "Android shared data directory" },
-        @{ Path = Join-Path $PackageDir "input_methods\rime\data\cloudclipboard"; Label = "cloud clipboard shared data directory" },
-        @{ Path = Join-Path $PackageDir "input_methods\rime\data\templates"; Label = "template shared data directory" },
-        @{ Path = Join-Path $PackageDir "input_methods\rime\data\test"; Label = "test shared data directory" },
-        @{ Path = Join-Path $PackageDir "input_methods\rime\data\icons"; Label = "duplicate shared data icon directory" }
-    )
-    foreach ($entry in $pathsToRemove) {
-        Remove-PackagePath -Path $entry.Path -Label $entry.Label
-    }
-
-    $packagedGoFiles = Get-ChildItem -LiteralPath (Join-Path $PackageDir "input_methods\rime") -Filter "*.go" -Recurse -File -ErrorAction SilentlyContinue
-    if ($packagedGoFiles) {
-        $packagedGoFiles | Remove-Item -Force
-        Write-Host "[INFO] Removed packaged Go source files"
-    }
-
-    $rimeDll = Join-Path $RimeDir "rime.dll"
-    if (Test-Path -LiteralPath $rimeDll) {
-        Copy-Item -LiteralPath $rimeDll -Destination (Join-Path $PackageDir "input_methods\rime\rime.dll") -Force
-        Write-Host "[INFO] Copied rime.dll into package output"
-    }
 
     Write-Step -Title "Step 7: Finalize TypeDuck runtime package"
     Write-Host "[INFO] Backend manifest snippets are intentionally not generated; the Windows launcher owns runtime discovery."
